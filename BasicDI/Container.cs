@@ -15,15 +15,15 @@ public class Container : IContainer
     internal readonly Dictionary<Type, object> _dependencies = [];
 
     /// <summary>
-    /// A lock object used to facilitate thread safety on operations against the dependency mapping
-    /// container.
-    /// </summary>
-    internal readonly object _lock = new();
-
-    /// <summary>
     /// A lazy initializer for the dependency injection container.
     /// </summary>
     private static readonly Lazy<Container> _lazy = new(static () => new Container());
+
+    /// <summary>
+    /// A lock object used to facilitate thread safety on operations against the dependency mapping
+    /// container.
+    /// </summary>
+    private readonly object _lock = new();
 
     /// <summary>
     /// The default constructor is marked private to prevent the user from invoking it directly.
@@ -61,6 +61,29 @@ public class Container : IContainer
     public ICanBindTo<T> Bind<T>() where T : class => new Dependency<T>(this);
 
     /// <summary>
+    /// Get the dependency object for the specified dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of the dependency to get.
+    /// </typeparam>
+    /// <returns>
+    /// The <see cref="Dependency{T}" /> object for the specified dependency type, or
+    /// <see langword="null" /> if the dependency hasn't been registered in the container.
+    /// </returns>
+    public IDependency<T>? GetDependency<T>() where T : class
+    {
+        lock (_lock)
+        {
+            if (_dependencies.TryGetValue(typeof(T), out object? dependency))
+            {
+                return (IDependency<T>)dependency;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Create a new <see cref="Dependency{T}" /> object to be used for registering the specified
     /// concrete dependency type with the dependency injection container.
     /// </summary>
@@ -90,5 +113,22 @@ public class Container : IContainer
 
         string msg = string.Format(Messages.RegisteredTypeNotConcreteClass, type.FullName);
         throw new InvalidOperationException(msg);
+    }
+
+    /// <summary>
+    /// Add a dependency to the dependency injection container.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of dependency to be added.
+    /// </typeparam>
+    /// <param name="dependency">
+    /// The dependency object containing the details of the dependency.
+    /// </param>
+    internal void AddDependency<T>(Dependency<T> dependency) where T : class
+    {
+        lock (_lock)
+        {
+            _dependencies[typeof(T)] = dependency;
+        }
     }
 }

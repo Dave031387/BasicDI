@@ -18,9 +18,6 @@ public class BasicDIUnitTests
         container._dependencies
             .Should()
             .NotBeNull();
-        container._lock
-            .Should()
-            .NotBeNull();
     }
 
     [Fact]
@@ -284,4 +281,273 @@ public class BasicDIUnitTests
             .ThrowExactly<InvalidOperationException>()
             .WithMessage(expectedMessage);
     }
+
+    [Fact]
+    public void BindGenericInterface_ShouldCreateNewDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<IGenericObject<int>> dependency = (Dependency<IGenericObject<int>>)container.Bind<IGenericObject<int>>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(IGenericObject<int>));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(object));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindGenericTypeToGenericResolvingType_ShouldUpdateDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<IGenericObject<string>> dependency = (Dependency<IGenericObject<string>>)container.Bind<IGenericObject<string>>().To<GenericObject<string>>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(IGenericObject<string>));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(GenericObject<string>));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindGenericTypeToIncompatibleResolvingType_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        Func<ICanSpecifyLifetime> func = () => container.Bind<IGenericObject<int>>().To<GenericObject<string>>();
+        string expectedMessage = string.Format(Messages.IncompatibleResolvingType, typeof(GenericObject<string>).FullName, typeof(IGenericObject<int>).FullName);
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<InvalidOperationException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void RegisterGenericType_ShouldCreateNewDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<GenericObject<bool>> dependency = (Dependency<GenericObject<bool>>)container.Register<GenericObject<bool>>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(GenericObject<bool>));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(GenericObject<bool>));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindToResolvingTypeAsScoped_ShouldUpdateDependencyAndAddToContainer()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+
+        // Assert
+        container._dependencies
+            .Should()
+            .ContainSingle();
+        container._dependencies
+            .Should()
+            .ContainKey(typeof(ISimpleObject));
+        Dependency<ISimpleObject> dependency = GetDependency<ISimpleObject>(container);
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(ISimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Scoped);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(SimpleObject1));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindToResolvingTypeAsSingleton_ShouldUpdateDependencyAndAddToContainer()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+
+        // Assert
+        container._dependencies
+            .Should()
+            .ContainSingle();
+        container._dependencies
+            .Should()
+            .ContainKey(typeof(ISimpleObject));
+        Dependency<ISimpleObject> dependency = GetDependency<ISimpleObject>(container);
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(ISimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Singleton);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(SimpleObject1));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindToResolvingTypeAsTransient_ShouldUpdateDependencyAndAddToContainer()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+
+        // Assert
+        container._dependencies
+            .Should()
+            .ContainSingle();
+        container._dependencies
+            .Should()
+            .ContainKey(typeof(ISimpleObject));
+        Dependency<ISimpleObject> dependency = GetDependency<ISimpleObject>(container);
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(ISimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Transient);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(SimpleObject1));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void GetDependencyForAnUnregisteredType_ShouldReturnNull()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        IDependency<ISimpleObject>? dependency = container.GetDependency<ISimpleObject>();
+
+        // Assert
+        dependency
+            .Should()
+            .BeNull();
+    }
+
+    [Fact]
+    public void GetDependencyForRegisteredType_ShouldReturnDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        Dependency<ISimpleObject> expected = GetDependency<ISimpleObject>(container);
+
+        // Act
+        IDependency<ISimpleObject>? dependency = container.GetDependency<ISimpleObject>();
+
+        // Assert
+        dependency
+            .Should()
+            .BeSameAs(expected);
+    }
+
+    private static Dependency<T> GetDependency<T>(Container container) where T : class
+        => (Dependency<T>)container._dependencies[typeof(T)];
 }

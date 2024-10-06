@@ -82,6 +82,8 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// </summary>
     public void AsScoped()
     {
+        Lifetime = DependencyLifetime.Scoped;
+        _container.AddDependency(this);
     }
 
     /// <summary>
@@ -90,6 +92,8 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// </summary>
     public void AsSingleton()
     {
+        Lifetime = DependencyLifetime.Singleton;
+        _container.AddDependency(this);
     }
 
     /// <summary>
@@ -98,6 +102,8 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// </summary>
     public void AsTransient()
     {
+        Lifetime = DependencyLifetime.Transient;
+        _container.AddDependency(this);
     }
 
     /// <summary>
