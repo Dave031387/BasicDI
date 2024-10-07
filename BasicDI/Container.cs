@@ -15,6 +15,12 @@ public class Container : IContainer
     internal readonly Dictionary<Type, object> _dependencies = [];
 
     /// <summary>
+    /// A list of dependency scopes that are currently active for this dependency injection
+    /// container.
+    /// </summary>
+    internal readonly Dictionary<Guid, Scope> _scopes = [];
+
+    /// <summary>
     /// A lazy initializer for the dependency injection container.
     /// </summary>
     private static readonly Lazy<Container> _lazy = new(static () => new Container());
@@ -59,6 +65,24 @@ public class Container : IContainer
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
     public ICanBindTo<T> Bind<T>() where T : class => new Dependency<T>(this);
+
+    /// <summary>
+    /// Create a new scope and add it to the scope list.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IScope" /> object representing the scoped dependency lifetime.
+    /// </returns>
+    public IScope CreateScope()
+    {
+        Scope scope = new(this);
+
+        lock (_lock)
+        {
+            _scopes[scope.Guid] = scope;
+        }
+
+        return scope;
+    }
 
     /// <summary>
     /// Get the dependency object for the specified dependency type.
@@ -113,6 +137,49 @@ public class Container : IContainer
 
         string msg = string.Format(Messages.RegisteredTypeNotConcreteClass, type.FullName);
         throw new InvalidOperationException(msg);
+    }
+
+    /// <summary>
+    /// Resolve the specified dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of the dependency that is to be resolved.
+    /// </typeparam>
+    /// <returns>
+    /// An instance of the resolving type that was bound to the dependency type.
+    /// </returns>
+    public T Resolve<T>() where T : class
+    {
+        Dependency<T>? dependency = (Dependency<T>?)GetDependency<T>();
+
+        if (dependency is null)
+        {
+            string msg = string.Format(Messages.UnableToResolveUnknownDependency, typeof(T).FullName);
+            throw new InvalidOperationException(msg);
+        }
+
+        Type resolvingType = dependency.ResolvingType;
+        T resolvingObject;
+
+        switch (dependency.Lifetime)
+        {
+            case DependencyLifetime.Singleton:
+                lock (_lock)
+                {
+                    dependency.ResolvingObject ??= (T)Activator.CreateInstance(resolvingType)!;
+                }
+
+                resolvingObject = dependency.ResolvingObject;
+                break;
+            case DependencyLifetime.Transient:
+                resolvingObject = (T)Activator.CreateInstance(resolvingType)!;
+                break;
+            default:
+                string msg = string.Format(Messages.ResolvingScopedDependencyOutsideOfScope, typeof(T).FullName);
+                throw new InvalidOperationException(msg);
+        }
+
+        return resolvingObject;
     }
 
     /// <summary>

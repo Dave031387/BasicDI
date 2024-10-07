@@ -2,6 +2,7 @@ namespace BasicDI;
 
 using FluentAssertions;
 using TestObjects;
+using static System.Formats.Asn1.AsnWriter;
 
 public class BasicDIUnitTests
 {
@@ -18,6 +19,15 @@ public class BasicDIUnitTests
         container._dependencies
             .Should()
             .NotBeNull();
+        container._scopes
+            .Should()
+            .NotBeNull();
+        container._dependencies
+            .Should()
+            .BeEmpty();
+        container._scopes
+            .Should()
+            .BeEmpty();
     }
 
     [Fact]
@@ -406,6 +416,9 @@ public class BasicDIUnitTests
         container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
 
         // Assert
+        container._scopes
+            .Should()
+            .BeEmpty();
         container._dependencies
             .Should()
             .ContainSingle();
@@ -446,6 +459,9 @@ public class BasicDIUnitTests
         container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
 
         // Assert
+        container._scopes
+            .Should()
+            .BeEmpty();
         container._dependencies
             .Should()
             .ContainSingle();
@@ -486,6 +502,9 @@ public class BasicDIUnitTests
         container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
 
         // Assert
+        container._scopes
+            .Should()
+            .BeEmpty();
         container._dependencies
             .Should()
             .ContainSingle();
@@ -546,6 +565,181 @@ public class BasicDIUnitTests
         dependency
             .Should()
             .BeSameAs(expected);
+    }
+
+    [Fact]
+    public void CreateScope_ShouldCreateNewScopeAndAddToScopeList()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        IScope scope = container.CreateScope();
+
+        // Assert
+        scope
+            .Should()
+            .NotBeNull();
+        container._scopes
+            .Should()
+            .ContainSingle();
+        container._scopes
+            .Should()
+            .ContainKey(scope.Guid);
+        container._scopes[scope.Guid]
+            .Should()
+            .BeSameAs(scope);
+    }
+
+    [Fact]
+    public void CreateMultipleScopes_EachScopeShouldHaveUniqueGuidAndShouldBeAddedToScopeList()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        IScope scope1 = container.CreateScope();
+        IScope scope2 = container.CreateScope();
+        IScope scope3 = container.CreateScope();
+
+        // Assert
+        scope1.Guid
+            .Should()
+            .NotBe(scope2.Guid);
+        scope2.Guid
+            .Should()
+            .NotBe(scope3.Guid);
+        scope3.Guid
+            .Should()
+            .NotBe(scope1.Guid);
+        container._scopes
+            .Should()
+            .HaveCount(3);
+        container._scopes
+            .Should()
+            .ContainKeys(scope1.Guid, scope2.Guid, scope3.Guid);
+        container._scopes[scope1.Guid]
+            .Should()
+            .BeSameAs(scope1);
+        container._scopes[scope2.Guid]
+            .Should()
+            .BeSameAs(scope2);
+        container._scopes[scope3.Guid]
+            .Should()
+            .BeSameAs(scope3);
+    }
+
+    [Fact]
+    public void ResolveSimpleDependency_ShouldReturnInstanceOfResolvingType()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+
+        // Act
+        ISimpleObject simpleObject = container.Resolve<ISimpleObject>();
+
+        // Assert
+        simpleObject
+            .Should()
+            .NotBeNull();
+        simpleObject
+            .Should()
+            .BeOfType<SimpleObject1>();
+    }
+
+    [Fact]
+    public void ResolveUnknownDependency_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
+        string expectedMessage = string.Format(Messages.UnableToResolveUnknownDependency, typeof(ISimpleObject).FullName);
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<InvalidOperationException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void ResolveTransientDependencyMoreThanOnce_ShouldReturnNewResolvingInstanceEachTime()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+
+        // Act
+        ISimpleObject simpleObject1 = container.Resolve<ISimpleObject>();
+        ISimpleObject simpleObject2 = container.Resolve<ISimpleObject>();
+        ISimpleObject simpleObject3 = container.Resolve<ISimpleObject>();
+
+        // Assert
+        simpleObject1
+            .Should()
+            .NotBeNull();
+        simpleObject2
+            .Should()
+            .NotBeNull();
+        simpleObject3
+            .Should()
+            .NotBeNull();
+        simpleObject1
+            .Should()
+            .NotBeSameAs(simpleObject2);
+        simpleObject2
+            .Should()
+            .NotBeSameAs(simpleObject3);
+        simpleObject3
+            .Should()
+            .NotBeSameAs(simpleObject1);
+    }
+
+    [Fact]
+    public void ResolveSingletonDependencyMoreThanOnce_ShouldReturnSameInstanceEachTime()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+
+        // Act
+        ISimpleObject simpleObject1 = container.Resolve<ISimpleObject>();
+        ISimpleObject simpleObject2 = container.Resolve<ISimpleObject>();
+        ISimpleObject simpleObject3 = container.Resolve<ISimpleObject>();
+
+        // Assert
+        simpleObject1
+            .Should()
+            .NotBeNull();
+        simpleObject2
+            .Should()
+            .NotBeNull();
+        simpleObject3
+            .Should()
+            .NotBeNull();
+        simpleObject1
+            .Should()
+            .BeSameAs(simpleObject2);
+        simpleObject1
+            .Should()
+            .BeSameAs(simpleObject3);
+    }
+
+    [Fact]
+    public void ResolvingScopedDependencyOutsideOfScope_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
+        string expectedMessage = string.Format(Messages.ResolvingScopedDependencyOutsideOfScope, typeof(ISimpleObject).FullName);
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<InvalidOperationException>()
+            .WithMessage(expectedMessage);
     }
 
     private static Dependency<T> GetDependency<T>(Container container) where T : class

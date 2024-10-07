@@ -20,6 +20,14 @@ public interface IContainer
     ICanBindTo<T> Bind<T>() where T : class;
 
     /// <summary>
+    /// Create a new scope and add it to the scope list.
+    /// </summary>
+    /// <returns>
+    /// An <see cref="IScope" /> object representing the scoped dependency lifetime.
+    /// </returns>
+    IScope CreateScope();
+
+    /// <summary>
     /// Create a new <see cref="Dependency{T}" /> object to be used for registering the specified
     /// concrete dependency type with the dependency injection container.
     /// </summary>
@@ -33,4 +41,15 @@ public interface IContainer
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
     ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
+
+    /// <summary>
+    /// Resolve the specified dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of the dependency that is to be resolved.
+    /// </typeparam>
+    /// <returns>
+    /// An instance of the resolving type that was bound to the dependency type.
+    /// </returns>
+    T Resolve<T>() where T : class;
 }
