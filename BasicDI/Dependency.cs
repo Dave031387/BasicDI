@@ -118,6 +118,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// <returns>
     /// This updated <see cref="Dependency{T}" /> object.
     /// </returns>
+    /// <exception cref="InvalidOperationException" />"
     public ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class
     {
         ResolvingType = typeof(TResolving);

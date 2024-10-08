@@ -28,6 +28,18 @@ public interface IContainer
     IScope CreateScope();
 
     /// <summary>
+    /// Get the dependency object for the specified dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type of the dependency to get.
+    /// </typeparam>
+    /// <returns>
+    /// The <see cref="Dependency{T}" /> object for the specified dependency type, or
+    /// <see langword="null" /> if the dependency hasn't been registered in the container.
+    /// </returns>
+    IDependency<T>? GetDependency<T>() where T : class;
+
+    /// <summary>
     /// Create a new <see cref="Dependency{T}" /> object to be used for registering the specified
     /// concrete dependency type with the dependency injection container.
     /// </summary>
@@ -40,6 +52,7 @@ public interface IContainer
     /// <returns>
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
+    /// <exception cref="InvalidOperationException" />
     ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
 
     /// <summary>
@@ -51,5 +64,6 @@ public interface IContainer
     /// <returns>
     /// An instance of the resolving type that was bound to the dependency type.
     /// </returns>
+    /// <exception cref="InvalidOperationException" />
     T Resolve<T>() where T : class;
 }

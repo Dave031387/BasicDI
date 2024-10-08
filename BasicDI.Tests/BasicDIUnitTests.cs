@@ -742,6 +742,105 @@ public class BasicDIUnitTests
             .WithMessage(expectedMessage);
     }
 
+    [Fact]
+    public void ResolveDependencyHavingConstructorDependencies_ShouldResolveAllDependencies()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<IOtherObject>().To<OtherObject1>().AsTransient();
+
+        // Act
+        IOtherObject otherObject = container.Resolve<IOtherObject>();
+
+        // Assert
+        otherObject
+            .Should()
+            .NotBeNull();
+        otherObject
+            .Should()
+            .BeOfType<OtherObject1>();
+        otherObject.SimpleObject
+            .Should()
+            .NotBeNull();
+        otherObject.SimpleObject
+            .Should()
+            .BeOfType<SimpleObject1>();
+    }
+
+    [Fact]
+    public void ResolveComplexDependencyContainingGenericDependency_ShouldResolveAllDependencies()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<IOtherObject>().To<OtherObject1>().AsTransient();
+        container.Bind<IGenericObject<ISimpleObject>>().To<GenericObject<ISimpleObject>>().AsSingleton();
+        container.Bind<IComplexObject>().To<ComplexObject>().AsSingleton();
+
+        // Act
+        IComplexObject complexObject = container.Resolve<IComplexObject>();
+
+        // Assert
+        complexObject
+            .Should()
+            .NotBeNull();
+        complexObject
+            .Should()
+            .BeOfType<ComplexObject>();
+        complexObject.SimpleObject
+            .Should()
+            .NotBeNull();
+        complexObject.SimpleObject
+            .Should()
+            .BeOfType<SimpleObject1>();
+        complexObject.OtherObject
+            .Should()
+            .NotBeNull();
+        complexObject.OtherObject
+            .Should()
+            .BeOfType<OtherObject1>();
+        complexObject.OtherObject.SimpleObject
+            .Should()
+            .NotBeNull();
+        complexObject.OtherObject.SimpleObject
+            .Should()
+            .BeSameAs(complexObject.SimpleObject);
+        complexObject.GenericObject
+            .Should()
+            .NotBeNull();
+        complexObject.GenericObject
+            .Should()
+            .BeOfType<GenericObject<ISimpleObject>>();
+    }
+
+    [Fact]
+    public void ResolveDependencyThatHasFactoryDefined_ShouldUseFactoryToCreateResolvingInstance()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        string expected = "Built by factory";
+        IGenericObject<string> func() => new GenericObject<string>() { Value = expected };
+        container.Bind<IGenericObject<string>>().To<GenericObject<string>>(func).AsTransient();
+
+        // Act
+        IGenericObject<string> genericObject = container.Resolve<IGenericObject<string>>();
+
+        // Assert
+        genericObject
+            .Should()
+            .NotBeNull();
+        genericObject
+            .Should()
+            .BeOfType<GenericObject<string>>();
+        genericObject.Value
+            .Should()
+            .NotBeNull();
+        genericObject.Value
+            .Should()
+            .Be(expected);
+    }
+
     private static Dependency<T> GetDependency<T>(Container container) where T : class
         => (Dependency<T>)container._dependencies[typeof(T)];
 }

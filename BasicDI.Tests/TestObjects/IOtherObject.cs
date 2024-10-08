@@ -2,4 +2,9 @@
 
 public interface IOtherObject
 {
+    ISimpleObject SimpleObject
+    {
+        get;
+        set;
+    }
 }
