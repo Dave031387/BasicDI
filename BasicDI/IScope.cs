@@ -15,4 +15,15 @@ public interface IScope : IDisposable
     {
         get;
     }
+
+    /// <summary>
+    /// Resolve the given scoped dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The dependency type that is to be resolved.
+    /// </typeparam>
+    /// <returns>
+    /// The resolving object cast as the dependency type.
+    /// </returns>
+    T Resolve<T>() where T : class;
 }

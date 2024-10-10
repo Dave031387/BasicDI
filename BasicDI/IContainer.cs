@@ -34,7 +34,7 @@ public interface IContainer
     /// The type of the dependency to get.
     /// </typeparam>
     /// <returns>
-    /// The <see cref="Dependency{T}" /> object for the specified dependency type, or
+    /// The <see cref="IDependency{T}" /> object for the specified dependency type, or
     /// <see langword="null" /> if the dependency hasn't been registered in the container.
     /// </returns>
     IDependency<T>? GetDependency<T>() where T : class;

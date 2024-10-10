@@ -841,6 +841,92 @@ public class BasicDIUnitTests
             .Be(expected);
     }
 
+    [Fact]
+    public void CreateNewDependencyScope_ShouldCreateScopeAndAddToScopeList()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        using (IScope scope = container.CreateScope())
+        {
+            // Assert
+            scope
+                .Should()
+                .NotBeNull();
+            scope.Guid
+                .Should()
+                .NotBe(Guid.Empty);
+            ((Scope)scope)._container
+                .Should()
+                .BeSameAs(container);
+            container._scopes
+                .Should()
+                .ContainSingle();
+            container._scopes
+                .Should()
+                .ContainKey(scope.Guid);
+            container._scopes[scope.Guid]
+                .Should()
+                .BeSameAs(scope);
+        }
+    }
+
+    [Fact]
+    public void AtEndOfDependencyScope_ShouldDiscardScope()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        using (IScope scope = container.CreateScope())
+        {
+            container._scopes
+                .Should()
+                .NotBeEmpty();
+        }
+
+        // Assert
+        container._scopes
+            .Should()
+            .BeEmpty();
+    }
+
+    [Fact]
+    public void ResolveScopedDependency_ShouldReturnTheResolvingObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+
+        // Act
+        using (IScope scope = container.CreateScope())
+        {
+            ISimpleObject simpleObject = scope.Resolve<ISimpleObject>();
+
+            // Assert
+            simpleObject
+                .Should()
+                .NotBeNull();
+            simpleObject
+                .Should()
+                .BeOfType<SimpleObject1>();
+            ((Scope)scope)._resolvedDependencies
+                .Should()
+                .NotBeEmpty();
+            ((Scope)scope)._resolvedDependencies
+                .Should()
+                .ContainKey(typeof(ISimpleObject));
+            ((Scope)scope)._resolvedDependencies[typeof(ISimpleObject)]
+                .Should()
+                .BeSameAs(simpleObject);
+        }
+
+        container._scopes
+            .Should()
+            .BeEmpty();
+    }
+
     private static Dependency<T> GetDependency<T>(Container container) where T : class
         => (Dependency<T>)container._dependencies[typeof(T)];
 }
