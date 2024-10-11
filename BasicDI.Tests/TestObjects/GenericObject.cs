@@ -2,7 +2,7 @@
 
 public class GenericObject<T> : IGenericObject<T>
 {
-    public T Value
+    public T? Value
     {
         get; set;
     }

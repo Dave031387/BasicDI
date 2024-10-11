@@ -2,7 +2,6 @@ namespace BasicDI;
 
 using FluentAssertions;
 using TestObjects;
-using static System.Formats.Asn1.AsnWriter;
 
 public class BasicDIUnitTests
 {
@@ -161,7 +160,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -176,7 +175,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -191,7 +190,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -273,7 +272,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -288,7 +287,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -369,7 +368,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -659,7 +658,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -738,7 +737,7 @@ public class BasicDIUnitTests
         // Act/Assert
         func
             .Should()
-            .ThrowExactly<InvalidOperationException>()
+            .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
     }
 
@@ -911,13 +910,13 @@ public class BasicDIUnitTests
             simpleObject
                 .Should()
                 .BeOfType<SimpleObject1>();
-            ((Scope)scope)._resolvedDependencies
+            ((Scope)scope)._resolvingObjects
                 .Should()
                 .NotBeEmpty();
-            ((Scope)scope)._resolvedDependencies
+            ((Scope)scope)._resolvingObjects
                 .Should()
                 .ContainKey(typeof(ISimpleObject));
-            ((Scope)scope)._resolvedDependencies[typeof(ISimpleObject)]
+            ((Scope)scope)._resolvingObjects[typeof(ISimpleObject)]
                 .Should()
                 .BeSameAs(simpleObject);
         }
@@ -927,6 +926,153 @@ public class BasicDIUnitTests
             .BeEmpty();
     }
 
+    [Fact]
+    public void ResolveSameScopedDependencyMoreThanOnceInSameScope_ShouldReturnSameResolvingObjectInstance()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+
+        // Act
+        using (IScope scope = container.CreateScope())
+        {
+            ISimpleObject simpleObject1 = scope.Resolve<ISimpleObject>();
+            ISimpleObject simpleObject2 = scope.Resolve<ISimpleObject>();
+
+            // Assert
+            simpleObject1
+                .Should()
+                .BeSameAs(simpleObject2);
+        }
+    }
+
+    [Fact]
+    public void ResolveSameScopedDependencyInDifferentScopes_ShouldReturnDifferentInstancesOfResolvingObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+
+        // Act
+        using (IScope scope1 = container.CreateScope())
+        {
+            ISimpleObject simpleObject1 = scope1.Resolve<ISimpleObject>();
+
+            using (IScope scope2 = container.CreateScope())
+            {
+                ISimpleObject simpleObject2 = scope2.Resolve<ISimpleObject>();
+
+                // Assert
+                container._scopes
+                    .Should()
+                    .HaveCount(2);
+                container._scopes
+                    .Should()
+                    .ContainKeys(scope1.Guid, scope2.Guid);
+                simpleObject1
+                    .Should()
+                    .NotBeNull();
+                simpleObject2
+                    .Should()
+                    .NotBeNull();
+                simpleObject1
+                    .Should()
+                    .NotBeSameAs(simpleObject2);
+            }
+
+            container._scopes
+                .Should()
+                .ContainSingle();
+            container._scopes
+                .Should()
+                .ContainKey(scope1.Guid);
+            simpleObject1
+                .Should()
+                .NotBeNull();
+        }
+
+        container._scopes
+            .Should()
+            .BeEmpty();
+    }
+
+    [Fact]
+    public void ResolveSingletonInDifferentScopes_ShouldReturnSameInstanceEachTime()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+
+        // Act
+        using (IScope scop1 = container.CreateScope())
+        {
+            ISimpleObject simpleObject1 = scop1.Resolve<ISimpleObject>();
+
+            using (IScope scope2 = container.CreateScope())
+            {
+                ISimpleObject simpleObject2 = scope2.Resolve<ISimpleObject>();
+
+                // Assert
+                simpleObject1
+                    .Should()
+                    .BeSameAs(simpleObject2);
+            }
+        }
+    }
+
+    [Fact]
+    public void ResolveScopedDependencyHavingNestedDependencies_ShouldResolveAllDependencies()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+        container.Bind<IGenericObject<ISimpleObject>>().To<GenericObject<ISimpleObject>>().AsScoped();
+        container.Bind<IOtherObject>().To<OtherObject1>().AsScoped();
+        container.Bind<IComplexObject>().To<ComplexObject>().AsScoped();
+
+        // Act
+        using (IScope scope = container.CreateScope())
+        {
+            IComplexObject complexObject = scope.Resolve<IComplexObject>();
+
+            // Assert
+            Scope thisScope = (Scope)scope;
+            Type genericType = typeof(IGenericObject<ISimpleObject>);
+            Type otherType = typeof(IOtherObject);
+            Type complexType = typeof(IComplexObject);
+            container._scopes
+                .Should()
+                .ContainSingle();
+            thisScope._resolvingObjects
+                .Should()
+                .HaveCount(3);
+            thisScope._resolvingObjects
+                .Should()
+                .ContainKeys(genericType, otherType, complexType);
+            IGenericObject<ISimpleObject> genericObject = GetScopedResolvingObject<IGenericObject<ISimpleObject>>(thisScope);
+            IOtherObject otherObject = GetScopedResolvingObject<IOtherObject>(thisScope);
+            IComplexObject complexObject1 = GetScopedResolvingObject<IComplexObject>(thisScope);
+            complexObject
+                .Should()
+                .NotBeNull();
+            complexObject
+                .Should()
+                .BeSameAs(complexObject1);
+            otherObject
+                .Should()
+                .NotBeNull();
+            genericObject
+                .Should()
+                .NotBeNull();
+            otherObject.SimpleObject
+                .Should()
+                .NotBeSameAs(complexObject.SimpleObject);
+        }
+    }
+
     private static Dependency<T> GetDependency<T>(Container container) where T : class
         => (Dependency<T>)container._dependencies[typeof(T)];
+
+    private static T GetScopedResolvingObject<T>(Scope scope) where T : class
+        => (T)scope._resolvingObjects[typeof(T)];
 }

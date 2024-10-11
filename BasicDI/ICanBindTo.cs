@@ -20,6 +20,6 @@ public interface ICanBindTo<T> where T : class
     /// <returns>
     /// This updated <see cref="Dependency{T}" /> object.
     /// </returns>
-    /// <exception cref="InvalidOperationException" />"
+    /// <exception cref="DependencyInjectionException" />"
     ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class;
 }

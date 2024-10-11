@@ -13,7 +13,12 @@ internal class Scope : IScope, IDisposable
     /// <summary>
     /// A dictionary of resolved dependency types within the current scope.
     /// </summary>
-    internal readonly Dictionary<Type, object> _resolvedDependencies = [];
+    internal readonly Dictionary<Type, object> _resolvingObjects = [];
+
+    /// <summary>
+    /// A lock object used to ensure thread safety.
+    /// </summary>
+    private readonly object _lock = new();
 
     /// <summary>
     /// Flag to detect redundant calls to the <see cref="Dispose(bool)" /> method.
@@ -35,7 +40,6 @@ internal class Scope : IScope, IDisposable
     public Guid Guid
     {
         get;
-        private set;
     }
 
     /// <summary>
@@ -73,9 +77,12 @@ internal class Scope : IScope, IDisposable
     {
         Type dependencyType = typeof(T);
 
-        if (!DependencyHasBeenResolved<T>())
+        lock (_lock)
         {
-            _resolvedDependencies[dependencyType] = resolvingObject;
+            if (!DependencyHasBeenResolved<T>())
+            {
+                _resolvingObjects[dependencyType] = resolvingObject;
+            }
         }
     }
 
@@ -91,7 +98,12 @@ internal class Scope : IScope, IDisposable
     /// dependency type in this scope. Otherwise, returns <see langword="false" />.
     /// </returns>
     internal bool DependencyHasBeenResolved<T>() where T : class
-        => _resolvedDependencies.ContainsKey(typeof(T));
+    {
+        lock (_lock)
+        {
+            return _resolvingObjects.ContainsKey(typeof(T));
+        }
+    }
 
     /// <summary>
     /// Get the resolving object for the given dependency type.
@@ -105,9 +117,12 @@ internal class Scope : IScope, IDisposable
     /// </returns>
     internal T? GetResolvingObject<T>() where T : class
     {
-        if (DependencyHasBeenResolved<T>())
+        lock (_lock)
         {
-            return (T)_resolvedDependencies[typeof(T)];
+            if (DependencyHasBeenResolved<T>())
+            {
+                return (T)_resolvingObjects[typeof(T)];
+            }
         }
 
         return null;
@@ -130,7 +145,7 @@ internal class Scope : IScope, IDisposable
         if (disposing)
         {
             _container.RemoveScope(this);
-            _resolvedDependencies.Clear();
+            _resolvingObjects.Clear();
         }
 
         // Unmanaged resources would be freed here if there were any.

@@ -2,7 +2,7 @@
 
 public interface IGenericObject<T>
 {
-    public T Value
+    public T? Value
     {
         get; set;
     }

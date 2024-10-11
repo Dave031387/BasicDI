@@ -36,4 +36,28 @@ public class DependencyInjectionException : Exception
     public DependencyInjectionException(string message, Exception inner) : base(message, inner)
     {
     }
+
+    /// <summary>
+    /// The dependency type.
+    /// </summary>
+    public Type? DependencyType
+    {
+        get; internal set;
+    }
+
+    /// <summary>
+    /// The dependency lifetime.
+    /// </summary>
+    public DependencyLifetime Lifetime
+    {
+        get; internal set;
+    }
+
+    /// <summary>
+    /// The resolving type.
+    /// </summary>
+    public Type? ResolvingType
+    {
+        get; internal set;
+    }
 }

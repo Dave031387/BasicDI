@@ -118,7 +118,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// <returns>
     /// This updated <see cref="Dependency{T}" /> object.
     /// </returns>
-    /// <exception cref="InvalidOperationException" />"
+    /// <exception cref="DependencyInjectionException" />"
     public ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class
     {
         ResolvingType = typeof(TResolving);
@@ -132,10 +132,18 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
             }
 
             string msg1 = string.Format(Messages.ResolvingTypeNotConcreteClass, ResolvingType.FullName, Type.FullName);
-            throw new InvalidOperationException(msg1);
+            throw new DependencyInjectionException(msg1)
+            {
+                DependencyType = Type,
+                ResolvingType = ResolvingType
+            };
         }
 
         string msg2 = string.Format(Messages.IncompatibleResolvingType, ResolvingType.FullName, Type.FullName);
-        throw new InvalidOperationException(msg2);
+        throw new DependencyInjectionException(msg2)
+        {
+            DependencyType = Type,
+            ResolvingType = ResolvingType
+        };
     }
 }

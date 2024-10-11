@@ -52,7 +52,7 @@ public interface IContainer
     /// <returns>
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
-    /// <exception cref="InvalidOperationException" />
+    /// <exception cref="DependencyInjectionException" />
     ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
 
     /// <summary>
@@ -64,6 +64,6 @@ public interface IContainer
     /// <returns>
     /// An instance of the resolving type that was bound to the dependency type.
     /// </returns>
-    /// <exception cref="InvalidOperationException" />
+    /// <exception cref="DependencyInjectionException" />
     T Resolve<T>() where T : class;
 }
