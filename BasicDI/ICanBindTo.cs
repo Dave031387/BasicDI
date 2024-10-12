@@ -9,7 +9,7 @@
 public interface ICanBindTo<T> where T : class
 {
     /// <summary>
-    /// Assign the resolving type to the dependency.
+    /// Bind the resolving type to the dependency type.
     /// </summary>
     /// <typeparam name="TResolving">
     /// The type of the resolving object.
@@ -18,7 +18,7 @@ public interface ICanBindTo<T> where T : class
     /// Optional factory delegate for creating instances of the resolving type.
     /// </param>
     /// <returns>
-    /// This updated <see cref="Dependency{T}" /> object.
+    /// This updated <see cref="Dependency{T}" /> instance.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />"
     ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class;

@@ -12,7 +12,7 @@ public interface IDependency<T> where T : class
     /// Gets the factory object used for creating instances of the resolving type.
     /// </summary>
     /// <remarks>
-    /// <see langword="null" /> will be returned if no factory is defined for this dependency.
+    /// Will return <see langword="null" /> if no factory is defined for this dependency.
     /// </remarks>
     Func<T>? Factory
     {
@@ -35,7 +35,7 @@ public interface IDependency<T> where T : class
     /// Gets an instance of the resolving object for this dependency.
     /// </summary>
     /// <remarks>
-    /// <see langword="null" /> will be returned if this dependency isn't a singleton.
+    /// Will return <see langword="null" /> if this dependency isn't a singleton.
     /// </remarks>
     T? ResolvingObject
     {

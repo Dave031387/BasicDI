@@ -98,12 +98,7 @@ internal class Scope : IScope, IDisposable
     /// dependency type in this scope. Otherwise, returns <see langword="false" />.
     /// </returns>
     internal bool DependencyHasBeenResolved<T>() where T : class
-    {
-        lock (_lock)
-        {
-            return _resolvingObjects.ContainsKey(typeof(T));
-        }
-    }
+        => _resolvingObjects.ContainsKey(typeof(T));
 
     /// <summary>
     /// Get the resolving object for the given dependency type.

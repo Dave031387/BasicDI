@@ -27,21 +27,21 @@ public class Container : IContainer
     private static readonly Lazy<Container> _lazy = new(static () => new Container());
 
     /// <summary>
-    /// A lock object used to facilitate thread safety on operations against the dependency mapping
-    /// container.
+    /// A lock object used to facilitate thread safety on operations against the dependency
+    /// injection container.
     /// </summary>
     private readonly object _lock = new();
 
     /// <summary>
     /// Save the <see cref="MethodInfo" /> details for the <see cref="Resolve{T}()" /> method so
-    /// that we can create versions of the method for different generic types.
+    /// that we can dynamically invoke the method for different generic types.
     /// </summary>
     private readonly MethodInfo _resolveMethodInfo
         = typeof(Container).GetMethod(nameof(Resolve), BindingFlags.Public | BindingFlags.Instance)!;
 
     /// <summary>
     /// Save the <see cref="MethodInfo" /> details for the <see cref="ResolveScoped{T}(IScope)" />
-    /// method so that we can create versions of the method for different generic types.
+    /// method so that we can dynamically invoke the method for different generic types.
     /// </summary>
     private readonly MethodInfo _resolveScopedMethodInfo
         = typeof(Container).GetMethod(nameof(ResolveScoped), BindingFlags.NonPublic | BindingFlags.Instance, [typeof(IScope)])!;
@@ -74,7 +74,7 @@ public class Container : IContainer
     /// dependency type and registering it with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency object.
+    /// The dependency type.
     /// </typeparam>
     /// <returns>
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
@@ -85,7 +85,7 @@ public class Container : IContainer
     /// Create a new scope and add it to the scope list.
     /// </summary>
     /// <returns>
-    /// An <see cref="IScope" /> object representing the scoped dependency lifetime.
+    /// An <see cref="IScope" /> object for managing the scoped dependency lifetime.
     /// </returns>
     public IScope CreateScope()
     {
@@ -100,13 +100,13 @@ public class Container : IContainer
     }
 
     /// <summary>
-    /// Get the dependency object for the specified dependency type.
+    /// Get the <see cref="IDependency{T}" /> instance for the specified dependency type.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency to get.
+    /// The dependency type to look for.
     /// </typeparam>
     /// <returns>
-    /// The <see cref="IDependency{T}" /> object for the specified dependency type, or
+    /// The <see cref="IDependency{T}" /> instance for the specified dependency type, or
     /// <see langword="null" /> if the dependency hasn't been registered in the container.
     /// </returns>
     public IDependency<T>? GetDependency<T>() where T : class
@@ -123,17 +123,18 @@ public class Container : IContainer
     }
 
     /// <summary>
-    /// Create a new <see cref="Dependency{T}" /> object to be used for registering the specified
+    /// Create a new <see cref="Dependency{T}" /> instance to be used for registering the specified
     /// concrete dependency type with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency object. Must be a concrete type. (not an interface)
+    /// The dependency type to register. Must be a concrete type. (not an abstract class or
+    /// interface)
     /// </typeparam>
     /// <param name="factory">
     /// Optional factory delegate for creating instances of the dependency type.
     /// </param>
     /// <returns>
-    /// A new <see cref="Dependency{T}" /> object representing the dependency.
+    /// A new <see cref="Dependency{T}" /> instance representing the dependency.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     public ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class
@@ -160,40 +161,42 @@ public class Container : IContainer
     }
 
     /// <summary>
-    /// Resolve the specified dependency type.
+    /// Get the resolving instance for the specified dependency type.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency that is to be resolved.
+    /// The dependency type that is to be resolved.
     /// </typeparam>
     /// <returns>
     /// An instance of the resolving type that was bound to the dependency type.
     /// </returns>
+    /// <remarks>
+    /// This method is invoked recursively until all nested dependencies of the given dependency
+    /// type have been resolved.
+    /// </remarks>
     /// <exception cref="DependencyInjectionException" />
     public T Resolve<T>() where T : class
     {
         Dependency<T> dependency = GetDependencyObject<T>();
 
-        if (dependency.Lifetime is DependencyLifetime.Singleton && dependency.ResolvingObject is not null)
+        if (DependencyHasBeenResolved(dependency))
         {
-            return dependency.ResolvingObject;
+            return GetResolvedDependency(dependency)!;
         }
 
-        Type resolvingType = dependency.ResolvingType;
-        ConstructorInfo constructorInfo = resolvingType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).First();
-        ParameterInfo[] parameterInfos = constructorInfo.GetParameters();
-        object[] resolvingObjects = ResolveNestedDependencies(parameterInfos);
+        ConstructorInfo constructorInfo = GetConstructorInfo(dependency.ResolvingType);
+        object[] resolvingObjects = ResolveNestedDependencies(constructorInfo);
 
-        return GetResolvingObject(dependency, constructorInfo, resolvingObjects);
+        return GetResolvingInstance(dependency, constructorInfo, resolvingObjects);
     }
 
     /// <summary>
     /// Add a dependency to the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of dependency to be added.
+    /// The dependency type to be added.
     /// </typeparam>
     /// <param name="dependency">
-    /// The dependency object containing the details of the dependency.
+    /// The <see cref="Dependency{T}" /> object containing the details of the given dependency type.
     /// </param>
     internal void AddDependency<T>(Dependency<T> dependency) where T : class
     {
@@ -221,7 +224,7 @@ public class Container : IContainer
     /// Resolve the given dependency type in the given scope.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of dependency that is to be resolved.
+    /// The dependency type that is to be resolved.
     /// </typeparam>
     /// <param name="scope">
     /// The effective scope that the dependency is being resolved in.
@@ -229,24 +232,158 @@ public class Container : IContainer
     /// <returns>
     /// An instance of the resolving type that was bound to the dependency type.
     /// </returns>
+    /// <remarks>
+    /// This method is invoked recursively until all nested dependencies of the given dependency
+    /// type have been resolved.
+    /// </remarks>
     /// <exception cref="DependencyInjectionException" />
     internal T ResolveScoped<T>(IScope scope) where T : class
     {
         Scope activeScope = (Scope)scope;
         Dependency<T> dependency = GetDependencyObject<T>();
 
-        if (dependency.Lifetime is DependencyLifetime.Scoped && activeScope.DependencyHasBeenResolved<T>())
+        if (DependencyHasBeenResolved(dependency, activeScope))
         {
-            return activeScope.GetResolvingObject<T>()!;
+            return GetResolvedDependency(dependency, activeScope)!;
         }
 
-        Type resolvingType = dependency.ResolvingType;
-        ConstructorInfo constructorInfo = resolvingType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).First();
-        ParameterInfo[] parameterInfos = constructorInfo.GetParameters();
-        object[] resolvingObjects = ResolveNestedDependencies(parameterInfos, activeScope);
+        ConstructorInfo constructorInfo = GetConstructorInfo(dependency.ResolvingType);
+        object[] resolvingObjects = ResolveNestedDependencies(constructorInfo, activeScope);
 
-        return GetResolvingObject(dependency, constructorInfo, resolvingObjects, activeScope);
+        return GetResolvingInstance(dependency, constructorInfo, resolvingObjects, activeScope);
     }
+
+    /// <summary>
+    /// Determine if the given dependency has already been resolved.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The dependency type to be checked.
+    /// </typeparam>
+    /// <param name="dependency">
+    /// The <see cref="Dependency{T}" /> object describing the dependency.
+    /// </param>
+    /// <param name="scope">
+    /// An optional scope that the dependency is being resolved in. Defaults to
+    /// <see langword="null" /> if no scope is in effect.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> if a resolving object exists for the given dependency type,
+    /// otherwise <see langword="false" /> if no resolving object exists.
+    /// </returns>
+    private static bool DependencyHasBeenResolved<T>(Dependency<T> dependency, Scope? scope = null) where T : class
+    {
+        if (IsSingleton(dependency))
+        {
+            return dependency.ResolvingObject is not null;
+        }
+        else if (IsScoped(dependency, scope))
+        {
+            return scope!.DependencyHasBeenResolved<T>();
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Get the <see cref="ConstructorInfo" /> for the given class type.
+    /// </summary>
+    /// <param name="type">
+    /// The class type for which we want to retrieve the constructor info.
+    /// </param>
+    /// <returns>
+    /// The <see cref="ConstructorInfo" /> object for the given class type.
+    /// </returns>
+    /// <remarks>
+    /// If there is more than one constructor for the given class type, then the info for the
+    /// constructor having the most parameters will be returned.
+    /// </remarks>
+    private static ConstructorInfo GetConstructorInfo(Type type)
+    {
+        BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        ConstructorInfo[] constructorInfos = type.GetConstructors(bindingFlags);
+        int maxParameterCount = -1;
+        int constructorIndex = -1;
+
+        for (int i = 0; i < constructorInfos.Length; i++)
+        {
+            int parameterCount = constructorInfos[i].GetParameters().Length;
+
+            if (parameterCount > maxParameterCount)
+            {
+                maxParameterCount = parameterCount;
+                constructorIndex = i;
+            }
+        }
+
+        return constructorInfos[constructorIndex];
+    }
+
+    /// <summary>
+    /// Get the resolving object instance for the given dependency type.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The dependency type being resolved.
+    /// </typeparam>
+    /// <param name="dependency">
+    /// The <see cref="Dependency{T}" /> object describing the dependency.
+    /// </param>
+    /// <param name="scope">
+    /// An optional scope that the dependency is being resolved in. Defaults to
+    /// <see langword="null" /> if no scope is in effect.
+    /// </param>
+    /// <returns>
+    /// An instance of the resolving object, or <see langword="null" /> if no resolving object was
+    /// found.
+    /// </returns>
+    private static T? GetResolvedDependency<T>(Dependency<T> dependency, Scope? scope = null) where T : class
+    {
+        if (IsSingleton(dependency))
+        {
+            return dependency.ResolvingObject;
+        }
+        else if (IsScoped(dependency, scope))
+        {
+            return scope!.GetResolvingObject<T>();
+        }
+
+        // TODO: This path has not been unit tested.
+        return null;
+    }
+
+    /// <summary>
+    /// Determine if the given dependency type is a scoped dependency.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The dependency type to be checked.
+    /// </typeparam>
+    /// <param name="dependency">
+    /// The <see cref="Dependency{T}" /> that describes the dependency.
+    /// </param>
+    /// <param name="scope">
+    /// The scope of the dependency.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> if <paramref name="scope" /> isn't <see langword="null" /> and the
+    /// given dependency is a scoped dependency. Otherwise, returns <see langword="false" />.
+    /// </returns>
+    private static bool IsScoped<T>(Dependency<T> dependency, Scope? scope) where T : class
+        => dependency.Lifetime is DependencyLifetime.Scoped && scope is not null;
+
+    /// <summary>
+    /// Determine if the given dependency is a singleton dependency.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The dependency type to be checked.
+    /// </typeparam>
+    /// <param name="dependency">
+    /// The <see cref="Dependency{T}" /> that describes the dependency.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> if the given dependency is a singleton dependency. Otherwise,
+    /// returns <see langword="false" />.
+    /// </returns>
+    private static bool IsSingleton<T>(Dependency<T> dependency) where T : class
+                   => dependency.Lifetime is DependencyLifetime.Singleton;
 
     /// <summary>
     /// Construct the resolving object from its <see cref="ConstructorInfo" /> and list of parameter
@@ -268,7 +405,9 @@ public class Container : IContainer
     /// An instance of the resolving object cast as the dependency type.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
-    private T ConstructResolvingObject<T>(Dependency<T> dependency, ConstructorInfo constructorInfo, object[] parameterValues) where T : class
+    private T ConstructResolvingObject<T>(Dependency<T> dependency,
+                                          ConstructorInfo constructorInfo,
+                                          object[] parameterValues) where T : class
     {
         lock (_lock)
         {
@@ -282,6 +421,7 @@ public class Container : IContainer
         {
             return (T)constructorInfo.Invoke([.. parameterValues]);
         }
+        // TODO: This catch block has not been unit tested.
         catch (Exception ex)
         {
             string msg = string.Format(Messages.FailedToConstructResolvingObject, typeof(T).FullName, ex.Message);
@@ -295,10 +435,10 @@ public class Container : IContainer
     }
 
     /// <summary>
-    /// Get the dependency object for the specified dependency type.
+    /// Get the <see cref="Dependency{T}" /> object for the specified dependency type.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency to get.
+    /// The dependency type to get.
     /// </typeparam>
     /// <returns>
     /// The <see cref="Dependency{T}" /> object for the specified dependency type, or throws an
@@ -326,7 +466,7 @@ public class Container : IContainer
     /// Get an instance of the resolving object for the given dependency type.
     /// </summary>
     /// <typeparam name="T">
-    /// The type of the dependency that is being resolved.
+    /// The dependency type that is being resolved.
     /// </typeparam>
     /// <param name="dependency">
     /// The <see cref="Dependency{T}" /> object describing the dependency.
@@ -345,7 +485,10 @@ public class Container : IContainer
     /// An instance of the resolving object cast as the dependency type.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
-    private T GetResolvingObject<T>(Dependency<T> dependency, ConstructorInfo constructorInfo, object[] parameterValues, Scope? scope = null) where T : class
+    private T GetResolvingInstance<T>(Dependency<T> dependency,
+                                      ConstructorInfo constructorInfo,
+                                      object[] parameterValues,
+                                      Scope? scope = null) where T : class
     {
         return dependency.Lifetime switch
         {
@@ -354,6 +497,7 @@ public class Container : IContainer
             DependencyLifetime.Scoped => GetScoped(dependency, constructorInfo, parameterValues, scope),
             _ => throw new DependencyInjectionException(Messages.InvalidLifetime)
             {
+                // TODO: This default case has not been unit tested.
                 DependencyType = dependency.Type,
                 Lifetime = dependency.Lifetime,
                 ResolvingType = dependency.ResolvingType
@@ -385,10 +529,13 @@ public class Container : IContainer
     /// </returns>
     /// <remarks>
     /// This method should be called only after verifying that the resolving object hasn't already
-    /// been constructed.
+    /// been constructed for the given scope.
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
-    private T GetScoped<T>(Dependency<T> dependency, ConstructorInfo constructorInfo, object[] parameterValues, Scope? scope) where T : class
+    private T GetScoped<T>(Dependency<T> dependency,
+                           ConstructorInfo constructorInfo,
+                           object[] parameterValues,
+                           Scope? scope) where T : class
     {
         if (scope is null)
         {
@@ -427,12 +574,13 @@ public class Container : IContainer
     /// An instance of the resolving object cast as the dependency type.
     /// </returns>
     /// <remarks>
-    /// A new instance of the resolving object will be constructed only on the first time that this
-    /// method is called. That same resolving object will be returned on all subsequent calls to
-    /// this method.
+    /// This method should be called only after verifying that the resolving object hasn't already
+    /// been constructed.
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
-    private T GetSingleton<T>(Dependency<T> dependency, ConstructorInfo constructorInfo, object[] parameterValues) where T : class
+    private T GetSingleton<T>(Dependency<T> dependency,
+                              ConstructorInfo constructorInfo,
+                              object[] parameterValues) where T : class
     {
         lock (_lock)
         {
@@ -464,16 +612,16 @@ public class Container : IContainer
     /// this method.
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
-    private T GetTransient<T>(Dependency<T> dependency, ConstructorInfo constructorInfo, object[] parameterValues) where T : class
+    private T GetTransient<T>(Dependency<T> dependency,
+                              ConstructorInfo constructorInfo,
+                              object[] parameterValues) where T : class
             => ConstructResolvingObject(dependency, constructorInfo, parameterValues);
 
     /// <summary>
-    /// Recursively resolve nested constructor dependencies found in the list of constructor
-    /// parameter infos.
+    /// Recursively resolve nested dependencies found in the constructor info.
     /// </summary>
-    /// <param name="parameterInfos">
-    /// An array of <see cref="ParameterInfo" /> corresponding to the dependencies found in a single
-    /// constructor method.
+    /// <param name="constructorInfo">
+    /// The <see cref="ConstructorInfo" /> for the resolving object.
     /// </param>
     /// <param name="scope">
     /// The scope that the dependencies are being resolved in, or <see langword="null" /> if no
@@ -483,29 +631,59 @@ public class Container : IContainer
     /// An array of resolving objects corresponding to each of the dependencies found in the
     /// constructor.
     /// </returns>
-    private object[] ResolveNestedDependencies(ParameterInfo[] parameterInfos, Scope? scope = null)
+    /// <exception cref="DependencyInjectionException" />
+    private object[] ResolveNestedDependencies(ConstructorInfo constructorInfo, Scope? scope = null)
     {
+        ParameterInfo[] parameterInfos = constructorInfo.GetParameters();
         List<object> resolvingObjects = [];
 
         foreach (ParameterInfo parameterInfo in parameterInfos)
         {
             Type parameterType = parameterInfo.ParameterType;
-            object? resolvingObject;
+            object? resolvingObject = ResolveNestedDependency(parameterType, scope);
 
-            if (scope is null)
+            if (resolvingObject is null)
             {
-                MethodInfo resolveMethodInfo = _resolveMethodInfo.MakeGenericMethod(parameterType);
-                resolvingObject = resolveMethodInfo.Invoke(this, []);
-            }
-            else
-            {
-                MethodInfo resolveScopedMethodInfo = _resolveScopedMethodInfo.MakeGenericMethod(parameterType);
-                resolvingObject = resolveScopedMethodInfo.Invoke(this, [scope]);
+                // TODO: This block has not been unit tested.
+                string msg = string.Format(Messages.ResolvingObjectIsNull, parameterType.FullName);
+                throw new DependencyInjectionException(msg)
+                {
+                    DependencyType = parameterType
+                };
             }
 
-            resolvingObjects.Add(resolvingObject!);
+            resolvingObjects.Add(resolvingObject);
         }
 
         return [.. resolvingObjects];
+    }
+
+    /// <summary>
+    /// This method makes a recursive call back to either the <see cref="Resolve{T}" /> or
+    /// <see cref="ResolveScoped{T}(IScope)" /> method to resolve the given nested dependency type.
+    /// </summary>
+    /// <param name="type">
+    /// The nested dependency type to be resolved.
+    /// </param>
+    /// <param name="scope">
+    /// The scope that the dependency is being resolved in, or <see langword="null" /> if no scope
+    /// is in effect.
+    /// </param>
+    /// <returns>
+    /// An instance of the resolving object for the given nested dependency type passed as an
+    /// <see langword="object" /> reference.
+    /// </returns>
+    private object? ResolveNestedDependency(Type type, Scope? scope = null)
+    {
+        if (scope is null)
+        {
+            MethodInfo resolveMethodInfo = _resolveMethodInfo.MakeGenericMethod(type);
+            return resolveMethodInfo.Invoke(this, []);
+        }
+        else
+        {
+            MethodInfo resolveScopedMethodInfo = _resolveScopedMethodInfo.MakeGenericMethod(type);
+            return resolveScopedMethodInfo.Invoke(this, [scope]);
+        }
     }
 }

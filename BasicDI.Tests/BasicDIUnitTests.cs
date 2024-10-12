@@ -89,7 +89,7 @@ public class BasicDIUnitTests
         Container container = Container.TestInstance;
 
         // Act
-        Dependency<ISimpleObject> dependency = (Dependency<ISimpleObject>)container.Bind<ISimpleObject>().To<SimpleObject1>();
+        Dependency<ISimpleObject> dependency = (Dependency<ISimpleObject>)container.Bind<ISimpleObject>().To<SimpleObject>();
 
         // Assert
         dependency
@@ -109,7 +109,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -120,10 +120,10 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        static SimpleObject1 factory() => new();
+        static SimpleObject factory() => new();
 
         // Act
-        Dependency<ISimpleObject> dependency = (Dependency<ISimpleObject>)container.Bind<ISimpleObject>().To<SimpleObject1>(factory);
+        Dependency<ISimpleObject> dependency = (Dependency<ISimpleObject>)container.Bind<ISimpleObject>().To<SimpleObject>(factory);
 
         // Assert
         dependency
@@ -143,7 +143,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -154,8 +154,8 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        Func<ICanSpecifyLifetime> func = () => container.Bind<ISimpleObject>().To<OtherObject1>();
-        string expectedMessage = string.Format(Messages.IncompatibleResolvingType, typeof(OtherObject1).FullName, typeof(ISimpleObject).FullName);
+        Func<ICanSpecifyLifetime> func = () => container.Bind<ISimpleObject>().To<OtherObject>();
+        string expectedMessage = string.Format(Messages.IncompatibleResolvingType, typeof(OtherObject).FullName, typeof(ISimpleObject).FullName);
 
         // Act/Assert
         func
@@ -201,7 +201,7 @@ public class BasicDIUnitTests
         Container container = Container.TestInstance;
 
         // Act
-        Dependency<SimpleObject1> dependency = (Dependency<SimpleObject1>)container.Register<SimpleObject1>();
+        Dependency<SimpleObject> dependency = (Dependency<SimpleObject>)container.Register<SimpleObject>();
 
         // Assert
         dependency
@@ -209,7 +209,7 @@ public class BasicDIUnitTests
             .NotBeNull();
         dependency.Type
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency.Factory
             .Should()
             .BeNull();
@@ -221,7 +221,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -232,10 +232,10 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        static SimpleObject1 factory() => new();
+        static SimpleObject factory() => new();
 
         // Act
-        Dependency<SimpleObject1> dependency = (Dependency<SimpleObject1>)container.Register(factory);
+        Dependency<SimpleObject> dependency = (Dependency<SimpleObject>)container.Register(factory);
 
         // Assert
         dependency
@@ -243,7 +243,7 @@ public class BasicDIUnitTests
             .NotBeNull();
         dependency.Type
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency.Factory
             .Should()
             .BeSameAs(factory);
@@ -255,7 +255,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -412,7 +412,7 @@ public class BasicDIUnitTests
         Container container = Container.TestInstance;
 
         // Act
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsScoped();
 
         // Assert
         container._scopes
@@ -442,7 +442,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -455,7 +455,7 @@ public class BasicDIUnitTests
         Container container = Container.TestInstance;
 
         // Act
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
 
         // Assert
         container._scopes
@@ -485,7 +485,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -498,7 +498,7 @@ public class BasicDIUnitTests
         Container container = Container.TestInstance;
 
         // Act
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsTransient();
 
         // Assert
         container._scopes
@@ -528,7 +528,7 @@ public class BasicDIUnitTests
             .BeNull();
         dependency.ResolvingType
             .Should()
-            .Be(typeof(SimpleObject1));
+            .Be(typeof(SimpleObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -554,7 +554,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
         Dependency<ISimpleObject> expected = GetDependency<ISimpleObject>(container);
 
         // Act
@@ -633,7 +633,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsTransient();
 
         // Act
         ISimpleObject simpleObject = container.Resolve<ISimpleObject>();
@@ -644,7 +644,7 @@ public class BasicDIUnitTests
             .NotBeNull();
         simpleObject
             .Should()
-            .BeOfType<SimpleObject1>();
+            .BeOfType<SimpleObject>();
     }
 
     [Fact]
@@ -667,7 +667,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsTransient();
 
         // Act
         ISimpleObject simpleObject1 = container.Resolve<ISimpleObject>();
@@ -700,7 +700,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
 
         // Act
         ISimpleObject simpleObject1 = container.Resolve<ISimpleObject>();
@@ -730,7 +730,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsScoped();
         Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
         string expectedMessage = string.Format(Messages.ResolvingScopedDependencyOutsideOfScope, typeof(ISimpleObject).FullName);
 
@@ -746,8 +746,8 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
-        container.Bind<IOtherObject>().To<OtherObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
+        container.Bind<IOtherObject>().To<OtherObject>().AsTransient();
 
         // Act
         IOtherObject otherObject = container.Resolve<IOtherObject>();
@@ -758,13 +758,13 @@ public class BasicDIUnitTests
             .NotBeNull();
         otherObject
             .Should()
-            .BeOfType<OtherObject1>();
+            .BeOfType<OtherObject>();
         otherObject.SimpleObject
             .Should()
             .NotBeNull();
         otherObject.SimpleObject
             .Should()
-            .BeOfType<SimpleObject1>();
+            .BeOfType<SimpleObject>();
     }
 
     [Fact]
@@ -772,8 +772,8 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
-        container.Bind<IOtherObject>().To<OtherObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
+        container.Bind<IOtherObject>().To<OtherObject>().AsTransient();
         container.Bind<IGenericObject<ISimpleObject>>().To<GenericObject<ISimpleObject>>().AsSingleton();
         container.Bind<IComplexObject>().To<ComplexObject>().AsSingleton();
 
@@ -792,13 +792,13 @@ public class BasicDIUnitTests
             .NotBeNull();
         complexObject.SimpleObject
             .Should()
-            .BeOfType<SimpleObject1>();
+            .BeOfType<SimpleObject>();
         complexObject.OtherObject
             .Should()
             .NotBeNull();
         complexObject.OtherObject
             .Should()
-            .BeOfType<OtherObject1>();
+            .BeOfType<OtherObject>();
         complexObject.OtherObject.SimpleObject
             .Should()
             .NotBeNull();
@@ -896,7 +896,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsScoped();
 
         // Act
         using (IScope scope = container.CreateScope())
@@ -909,7 +909,7 @@ public class BasicDIUnitTests
                 .NotBeNull();
             simpleObject
                 .Should()
-                .BeOfType<SimpleObject1>();
+                .BeOfType<SimpleObject>();
             ((Scope)scope)._resolvingObjects
                 .Should()
                 .NotBeEmpty();
@@ -931,7 +931,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsScoped();
 
         // Act
         using (IScope scope = container.CreateScope())
@@ -951,7 +951,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsScoped();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsScoped();
 
         // Act
         using (IScope scope1 = container.CreateScope())
@@ -1001,7 +1001,7 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsSingleton();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
 
         // Act
         using (IScope scop1 = container.CreateScope())
@@ -1025,9 +1025,9 @@ public class BasicDIUnitTests
     {
         // Arrange
         Container container = Container.TestInstance;
-        container.Bind<ISimpleObject>().To<SimpleObject1>().AsTransient();
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsTransient();
         container.Bind<IGenericObject<ISimpleObject>>().To<GenericObject<ISimpleObject>>().AsScoped();
-        container.Bind<IOtherObject>().To<OtherObject1>().AsScoped();
+        container.Bind<IOtherObject>().To<OtherObject>().AsScoped();
         container.Bind<IComplexObject>().To<ComplexObject>().AsScoped();
 
         // Act
@@ -1068,6 +1068,46 @@ public class BasicDIUnitTests
                 .Should()
                 .NotBeSameAs(complexObject.SimpleObject);
         }
+    }
+
+    [Fact]
+    public void GetScopedResolvingObject_ShouldReturnNullIfDependencyNotResolved()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        Scope scope = new(container);
+
+        // Act
+        ISimpleObject? simpleObject = scope.GetResolvingObject<ISimpleObject>();
+
+        // Assert
+        simpleObject
+            .Should()
+            .BeNull();
+    }
+
+    [Fact]
+    public void ResolvingObjectHasMultipleConstructors_ShouldUseConstructorWithMostParameters()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsSingleton();
+        container.Bind<IOtherObject>().To<OtherObject>().AsSingleton();
+        container.Bind<IMultipleConstructors>().To<MultipleConstructors>().AsSingleton();
+
+        // Act
+        IMultipleConstructors multipleConstructors = container.Resolve<IMultipleConstructors>();
+
+        // Assert
+        multipleConstructors
+            .Should()
+            .NotBeNull();
+        multipleConstructors.OtherObject
+            .Should()
+            .NotBeNull();
+        multipleConstructors.SimpleObject
+            .Should()
+            .NotBeNull();
     }
 
     private static Dependency<T> GetDependency<T>(Container container) where T : class

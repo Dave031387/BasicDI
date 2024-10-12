@@ -1,12 +1,10 @@
 ﻿namespace BasicDI;
 
 /// <summary>
-/// The <see cref="Dependency{T}" /> class defines the mapping of a dependency type to its resolving
-/// type.
+/// A class used to manage a given dependency.
 /// </summary>
 /// <typeparam name="T">
-/// The type of the dependency object that this <see cref="Dependency{T}" /> class instance
-/// describes.
+/// The dependency type that is being managed.
 /// </typeparam>
 /// <param name="container">
 /// A reference to the dependency injection container.
@@ -25,7 +23,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// Gets the factory object used for creating instances of the resolving type.
     /// </summary>
     /// <remarks>
-    /// <see langword="null" /> will be returned if no factory is defined for this dependency.
+    /// Will return <see langword="null" /> if no factory is defined for this dependency.
     /// </remarks>
     public Func<T>? Factory
     {
@@ -50,7 +48,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// Gets an instance of the resolving object for this dependency.
     /// </summary>
     /// <remarks>
-    /// <see langword="null" /> will be returned if this dependency isn't a singleton.
+    /// Will return <see langword="null" /> if this dependency isn't a singleton.
     /// </remarks>
     public T? ResolvingObject
     {
@@ -107,7 +105,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     }
 
     /// <summary>
-    /// Assign the resolving type to the dependency.
+    /// Bind the resolving type to the dependency type.
     /// </summary>
     /// <typeparam name="TResolving">
     /// The type of the resolving object.
@@ -116,7 +114,7 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// Optional factory delegate for creating instances of the resolving type.
     /// </param>
     /// <returns>
-    /// This updated <see cref="Dependency{T}" /> object.
+    /// This updated <see cref="Dependency{T}" /> instance.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />"
     public ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class
