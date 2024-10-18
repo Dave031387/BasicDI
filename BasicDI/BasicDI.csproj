@@ -7,15 +7,20 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>A Basic Dependency Injection Container</Title>
-    <Company>David R Slocum</Company>
-    <Description>This is a basic dependency injection container that can inject constructor dependencies when a class is instantiated. Supports transient, singleton, and scoped dependencies. Also supports generic dependency types.</Description>
-    <PackageTags>basicdi; di; dependency injection; c#</PackageTags>
+    <Company></Company>
+    <Description>This is a basic dependency injection container that can inject constructor dependencies when a class is instantiated. Supports transient, singleton, and scoped dependencies. Also handles generic dependency types and dependencies having more than one constructor.</Description>
+    <PackageTags>basicdi; di; dependency injection; c#; ioc</PackageTags>
     <PackageReleaseNotes>This is the initial release of the BasicDI package.</PackageReleaseNotes>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+    <Authors>David R Slocum</Authors>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Dave031387/BasicDI</RepositoryUrl>
+    <Copyright>2004 David R Slocum</Copyright>
+    <PackageOutputPath>C:\Users\dave0\Packages</PackageOutputPath>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -28,6 +33,10 @@
 
   <ItemGroup>
     <None Include="..\LICENSE.txt">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="..\README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>

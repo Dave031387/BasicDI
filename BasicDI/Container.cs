@@ -8,7 +8,7 @@ namespace BasicDI;
 /// <summary>
 /// A simple dependency injection container.
 /// </summary>
-public class Container : IContainer
+internal class Container : IContainer
 {
     /// <summary>
     /// The dependency mapping container.
@@ -79,7 +79,22 @@ public class Container : IContainer
     /// <returns>
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
-    public ICanBindTo<T> Bind<T>() where T : class => new Dependency<T>(this);
+    /// <exception cref="DependencyInjectionException" />
+    public ICanBindTo<T> Bind<T>() where T : class
+    {
+        Type dependencyType = typeof(T);
+
+        if (dependencyType.IsInterface || (dependencyType.IsClass && !dependencyType.IsAbstract))
+        {
+            return new Dependency<T>(this);
+        }
+
+        string msg = string.Format(Messages.DependencyTypeNotValid, dependencyType.FullName);
+        throw new DependencyInjectionException(msg)
+        {
+            DependencyType = dependencyType
+        };
+    }
 
     /// <summary>
     /// Create a new scope and add it to the scope list.

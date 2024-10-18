@@ -15,6 +15,7 @@ public interface IContainer
     /// <returns>
     /// A new <see cref="Dependency{T}" /> object representing the dependency.
     /// </returns>
+    /// <exception cref="DependencyInjectionException" />
     ICanBindTo<T> Bind<T>() where T : class;
 
     /// <summary>

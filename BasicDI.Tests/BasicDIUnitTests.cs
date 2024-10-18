@@ -83,6 +83,54 @@ public class BasicDIUnitTests
     }
 
     [Fact]
+    public void BindAbstractType_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        Func<ICanBindTo<AbstractClass>> func = container.Bind<AbstractClass>;
+        string expectedMessage = string.Format(Messages.DependencyTypeNotValid, typeof(AbstractClass).FullName);
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<DependencyInjectionException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void BindDependencyTypeToItself_ShouldUpdateDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<SimpleObject> dependency = (Dependency<SimpleObject>)container.Bind<SimpleObject>().To<SimpleObject>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(SimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(SimpleObject));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
     public void BindDependencyTypeToResolvingTypeWithoutFactory_ShouldUpdateDependencyObject()
     {
         // Arrange

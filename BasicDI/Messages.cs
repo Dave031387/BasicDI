@@ -6,6 +6,7 @@
 /// </summary>
 internal static class Messages
 {
+    internal const string DependencyTypeNotValid = "Dependency type {0} must be an interface or a concrete class type.";
     internal const string FailedToConstructResolvingObject = "An exception was thrown while trying to construct the resolving object for dependency type {0}.\nReason: {1}";
     internal const string IncompatibleResolvingType = ResolvingTypeCannotBeBound + " Resolving type is not assignable to dependency type.";
     internal const string InvalidLifetime = "Can't retrieve the resolving object for a dependency having an invalid lifetime.";

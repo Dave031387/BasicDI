@@ -134,6 +134,7 @@ internal class Scope : IScope, IDisposable
     {
         if (_isDisposed)
         {
+            // TODO: This path has not been unit tested.
             return;
         }
 
