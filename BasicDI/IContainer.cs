@@ -10,10 +10,10 @@ public interface IContainer
     /// dependency type and registering it with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The dependency type.
+    /// The dependency type. Must be a concrete type or an interface type.
     /// </typeparam>
     /// <returns>
-    /// A new <see cref="Dependency{T}" /> object representing the dependency.
+    /// A new <see cref="Dependency{T}" /> instance cast as a <see cref="ICanBindTo{T}" /> object.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     ICanBindTo<T> Bind<T>() where T : class;
@@ -40,17 +40,19 @@ public interface IContainer
 
     /// <summary>
     /// Create a new <see cref="Dependency{T}" /> instance to be used for registering the specified
-    /// concrete dependency type with the dependency injection container.
+    /// dependency type with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The dependency type to register. Must be a concrete type. (not an abstract class or
-    /// interface)
+    /// The dependency type to register. Must be a concrete type if <paramref name="factory" /> is
+    /// <see langword="null" />. Can be an interface type if <paramref name="factory" /> is not
+    /// <see langword="null" />.
     /// </typeparam>
     /// <param name="factory">
     /// Optional factory delegate for creating instances of the dependency type.
     /// </param>
     /// <returns>
-    /// A new <see cref="Dependency{T}" /> instance representing the dependency.
+    /// A new <see cref="Dependency{T}" /> instance cast as an <see cref="ICanSpecifyLifetime" />
+    /// object.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;

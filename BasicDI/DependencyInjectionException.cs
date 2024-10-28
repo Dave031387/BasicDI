@@ -7,13 +7,6 @@
 public class DependencyInjectionException : Exception
 {
     /// <summary>
-    /// Throw a <see cref="DependencyInjectionException" /> without specifying a message.
-    /// </summary>
-    public DependencyInjectionException()
-    {
-    }
-
-    /// <summary>
     /// Throw a <see cref="DependencyInjectionException" /> with the specified message.
     /// </summary>
     /// <param name="message">

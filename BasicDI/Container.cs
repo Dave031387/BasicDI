@@ -74,10 +74,10 @@ internal class Container : IContainer
     /// dependency type and registering it with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The dependency type.
+    /// The dependency type. Must be a concrete type or an interface type.
     /// </typeparam>
     /// <returns>
-    /// A new <see cref="Dependency{T}" /> object representing the dependency.
+    /// A new <see cref="Dependency{T}" /> instance cast as a <see cref="ICanBindTo{T}" /> object.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     public ICanBindTo<T> Bind<T>() where T : class
@@ -139,24 +139,27 @@ internal class Container : IContainer
 
     /// <summary>
     /// Create a new <see cref="Dependency{T}" /> instance to be used for registering the specified
-    /// concrete dependency type with the dependency injection container.
+    /// dependency type with the dependency injection container.
     /// </summary>
     /// <typeparam name="T">
-    /// The dependency type to register. Must be a concrete type. (not an abstract class or
-    /// interface)
+    /// The dependency type to register. Must be a concrete type if <paramref name="factory" /> is
+    /// <see langword="null" />. Can be an interface type if <paramref name="factory" /> is not
+    /// <see langword="null" />.
     /// </typeparam>
     /// <param name="factory">
     /// Optional factory delegate for creating instances of the dependency type.
     /// </param>
     /// <returns>
-    /// A new <see cref="Dependency{T}" /> instance representing the dependency.
+    /// A new <see cref="Dependency{T}" /> instance cast as an <see cref="ICanSpecifyLifetime" />
+    /// object.
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     public ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class
     {
         Type type = typeof(T);
 
-        if (type.IsClass && !type.IsAbstract)
+        if ((type.IsClass && !type.IsAbstract) ||
+            (type.IsInterface && factory is not null))
         {
             Dependency<T> dependency = new(this)
             {
@@ -198,8 +201,14 @@ internal class Container : IContainer
             return GetResolvedDependency(dependency)!;
         }
 
-        ConstructorInfo constructorInfo = GetConstructorInfo(dependency.ResolvingType);
-        object[] resolvingObjects = ResolveNestedDependencies(constructorInfo);
+        ConstructorInfo? constructorInfo = null;
+        object[] resolvingObjects = [];
+
+        if (dependency.Factory is null)
+        {
+            constructorInfo = GetConstructorInfo(dependency.ResolvingType);
+            resolvingObjects = ResolveNestedDependencies(constructorInfo);
+        }
 
         return GetResolvingInstance(dependency, constructorInfo, resolvingObjects);
     }
@@ -312,10 +321,21 @@ internal class Container : IContainer
     /// If there is more than one constructor for the given class type, then the info for the
     /// constructor having the most parameters will be returned.
     /// </remarks>
+    /// <exception cref="DependencyInjectionException" />
     private static ConstructorInfo GetConstructorInfo(Type type)
     {
         BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         ConstructorInfo[] constructorInfos = type.GetConstructors(bindingFlags);
+
+        if (constructorInfos.Length < 1)
+        {
+            string msg = string.Format(Messages.NoConstructorsFound, type.FullName);
+            throw new DependencyInjectionException(msg)
+            {
+                ResolvingType = type
+            };
+        }
+
         int maxParameterCount = -1;
         int constructorIndex = -1;
 
@@ -356,17 +376,14 @@ internal class Container : IContainer
         {
             return dependency.ResolvingObject;
         }
-        else if (IsScoped(dependency, scope))
-        {
-            return scope!.GetResolvingObject<T>();
-        }
 
-        // TODO: This path has not been unit tested.
-        return null;
+        // IMPORTANT: At this point we must be working with a scoped object in an active scope. Care
+        // must be taken if the code is refactored to ensure that this is always the case.
+        return scope!.GetResolvingObject<T>();
     }
 
     /// <summary>
-    /// Determine if the given dependency type is a scoped dependency.
+    /// Determine if the given dependency type is a scoped dependency in an active scope.
     /// </summary>
     /// <typeparam name="T">
     /// The dependency type to be checked.
@@ -398,7 +415,7 @@ internal class Container : IContainer
     /// returns <see langword="false" />.
     /// </returns>
     private static bool IsSingleton<T>(Dependency<T> dependency) where T : class
-                   => dependency.Lifetime is DependencyLifetime.Singleton;
+        => dependency.Lifetime is DependencyLifetime.Singleton;
 
     /// <summary>
     /// Construct the resolving object from its <see cref="ConstructorInfo" /> and list of parameter
@@ -421,7 +438,7 @@ internal class Container : IContainer
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     private T ConstructResolvingObject<T>(Dependency<T> dependency,
-                                          ConstructorInfo constructorInfo,
+                                          ConstructorInfo? constructorInfo,
                                           object[] parameterValues) where T : class
     {
         lock (_lock)
@@ -434,9 +451,8 @@ internal class Container : IContainer
 
         try
         {
-            return (T)constructorInfo.Invoke([.. parameterValues]);
+            return (T)constructorInfo!.Invoke([.. parameterValues]);
         }
-        // TODO: This catch block has not been unit tested.
         catch (Exception ex)
         {
             string msg = string.Format(Messages.FailedToConstructResolvingObject, typeof(T).FullName, ex.Message);
@@ -501,7 +517,7 @@ internal class Container : IContainer
     /// </returns>
     /// <exception cref="DependencyInjectionException" />
     private T GetResolvingInstance<T>(Dependency<T> dependency,
-                                      ConstructorInfo constructorInfo,
+                                      ConstructorInfo? constructorInfo,
                                       object[] parameterValues,
                                       Scope? scope = null) where T : class
     {
@@ -512,7 +528,6 @@ internal class Container : IContainer
             DependencyLifetime.Scoped => GetScoped(dependency, constructorInfo, parameterValues, scope),
             _ => throw new DependencyInjectionException(Messages.InvalidLifetime)
             {
-                // TODO: This default case has not been unit tested.
                 DependencyType = dependency.Type,
                 Lifetime = dependency.Lifetime,
                 ResolvingType = dependency.ResolvingType
@@ -548,7 +563,7 @@ internal class Container : IContainer
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
     private T GetScoped<T>(Dependency<T> dependency,
-                           ConstructorInfo constructorInfo,
+                           ConstructorInfo? constructorInfo,
                            object[] parameterValues,
                            Scope? scope) where T : class
     {
@@ -594,7 +609,7 @@ internal class Container : IContainer
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
     private T GetSingleton<T>(Dependency<T> dependency,
-                              ConstructorInfo constructorInfo,
+                              ConstructorInfo? constructorInfo,
                               object[] parameterValues) where T : class
     {
         lock (_lock)
@@ -628,7 +643,7 @@ internal class Container : IContainer
     /// </remarks>
     /// <exception cref="DependencyInjectionException" />
     private T GetTransient<T>(Dependency<T> dependency,
-                              ConstructorInfo constructorInfo,
+                              ConstructorInfo? constructorInfo,
                               object[] parameterValues) where T : class
             => ConstructResolvingObject(dependency, constructorInfo, parameterValues);
 
@@ -659,7 +674,7 @@ internal class Container : IContainer
 
             if (resolvingObject is null)
             {
-                // TODO: This block has not been unit tested.
+                // TODO: This block has not been unit tested. Should be an impossible condition.
                 string msg = string.Format(Messages.ResolvingObjectIsNull, parameterType.FullName);
                 throw new DependencyInjectionException(msg)
                 {

@@ -35,7 +35,8 @@ public interface IDependency<T> where T : class
     /// Gets an instance of the resolving object for this dependency.
     /// </summary>
     /// <remarks>
-    /// Will return <see langword="null" /> if this dependency isn't a singleton.
+    /// Will return <see langword="null" /> if this dependency isn't a singleton or if the
+    /// dependency hasn't been resolved yet.
     /// </remarks>
     T? ResolvingObject
     {

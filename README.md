@@ -1,4 +1,4 @@
-# BasicDI
+# *BasicDI* Class Library
 ## Overview
 The ***BasicDI*** class library was built as part of a training exercise to learn more about dependency injection and how it can be implemented.
 The library contains the basic functionality to handle constructor dependency injection. The key features include:
@@ -199,11 +199,15 @@ return the correctly constructed instance of the requested resolving type.
 
 ## Scoped Dependencies
 As the name implies, scoped dependencies are dependencies that are resolved within a given scope. Each active scope keeps track of its own
-copies of its resolved scoped dependencies. Within a scope, a scoped dependency acts similar to a singleton dependency. The first time a
-particular scoped dependency type is resolved in the scope, a new instance of the resolving object is created and returned. A reference to
-the resolving object is also saved in the corresponding ***IScope*** object which is held by the ***IContainer*** object. Each time after the
-first time that particular dependency type is resolved, the saved reference is returned to the caller. If two scopes are active at the same
-time and a given scoped dependency type is requested in each scope, then a new instance of the resolving object will be created in each scope.
+copies of its resolved scoped dependencies.
+
+Within a scope, a scoped dependency acts similar to a singleton dependency. The first time a particular scoped dependency type is resolved in
+the scope, a new instance of the resolving object is created and returned. A reference to the resolving object is also saved in the corresponding
+***IScope*** object which is held by the ***IContainer*** object. Each additional time that particular dependency type is resolved in a given
+scope, the saved reference is returned to the caller.
+
+If two scopes are active at the same time and a given scoped dependency type is requested in each scope, a new instance of the resolving object
+will be created in each scope.
 
 Before you can resolve scoped dependencies you must first create the dependency scope. This is done by calling the ***CreateScope()*** method
 on the ***Container*** class.
@@ -236,3 +240,188 @@ using (IScope scope = container.CreateScope())
 Scoped dependencies may themselves have dependencies on transient or singleton dependency types. These transient and singleton dependencies
 don't belong to any scope and will be resolved in the same way as described in the previous topic.
 
+> [!Note]
+> *Although not generally useful, it is permissible to embed one dependency scope within another.*
+
+# *BasicDI* User API
+## Overview
+The ***BasicDI*** class library user interface is made up of three primary interfaces.
+
+1. The ***IDependency\<T>*** interface describes a single dependency type and its resolving type.
+1. The ***IScope*** interface represents a single dependency scope.
+1. The ***IContainer*** interface provides access to the dependency injection container.
+
+In addition to these three interfaces, there are two interfaces on the ***Dependency\<T>*** object that support the fluent interface for
+binding and registering dependencies with the dependency injection container.
+
+1. The ***ICanBindTo\<T>*** interface provides the ***To\<TResolving>()*** method.
+1. The ***ICanSpecifyLifetime*** interface provides the ***AsScoped()***, ***AsSingleton()***, and ***AsTransient()*** methods.
+
+Each of these interfaces will be described in more detail in the topics that follow.
+
+The actual concrete types of the ***BasicDI*** class library are defined as internal to the class library. The only public access to these
+types is provided by the public interfaces listed above. There are three main concrete class types:
+
+1. The ***Dependency\<T>*** class implements the ***IDependency\<T>***, ***ICanBindTo\<T>***, and ***ICanSpecifyLifetime*** interfaces.
+1. The ***Scope*** class implements the ***IScope*** interface.
+1. The ***Container*** class implements the ***IContainer*** interface.
+
+## The *IDependency\<T>* Interface
+The ***IDependency\<T>*** interface describes a single dependency type and its resolving type. The ***GetDependency\<T>()*** method of the
+***IContainer*** interface provides the only means of obtaining an instance of this interface type.
+
+### *IDependency\<T>* Properties
+The ***IDependency\<T>*** interface defines the following properties.
+
+#### *Factory* Property
+The ***Factory*** property returns a reference to the factory that is used for creating instances of the resolving type, or *null* if no factory
+method was registered when the dependency was added to the dependency injection container. The return type is ***Func\<T>*** where the type
+parameter ***T*** specifies the dependency type.
+
+```csharp
+Func<T>? Factory { get; }
+```
+
+#### *Lifetime* Property
+The ***Lifetime*** property returns the lifetime of the dependency as a ***DependencyLifetime*** enumeration value. The possible values are:
+- ***DependencyLifetime.Undefined*** (0)
+- ***DependencyLifetime.Singleton*** (1)
+- ***DependencyLifetime.Scoped*** (2)
+- ***DependencyLifetime.Transient*** (3)
+
+```csharp
+DependencyLifetime Lifetime { get; }
+```
+
+#### *ResolvingObject* Property
+The ***ResolvingObject*** property returns *null* if the ***Lifetime*** property isn't ***DependencyLifetime.Singleton***. It will also return
+*null* if ***IContainer.Resolve\<T>()*** method hasn't yet been called for this dependency type. Otherwise, a reference to the resolving object
+will be returned. The return value will be cast to the dependency type.
+
+```csharp
+T? ResolvingObject { get; }
+```
+
+#### *ResolvingType* Property
+The ***ResolvingType*** property returns a ***System.Type*** object describing the class type of the resolving object for this
+***IDependency\<T>*** instance.
+
+```csharp
+Type ResolvingType { get; }
+```
+
+#### *Type* Property
+The ***Type*** property returns a ***System.Type*** object describing the dependency type of this ***IDependency\<T>*** instance.
+
+```csharp
+Type Type { get; }
+```
+
+## The *IScope* Interface
+The ***IScope*** interface represents a single dependency scope. Instances of this interface type must be used for resolving all scoped
+dependencies. The ***CreateScope()*** method of the ***IContainer*** interface provides the only means of obtaining an instance of this
+interface type.
+
+> [!Note]
+> *The **IScope** interface inherits from the **System.IDisposable** interface.*
+
+### *IScope* Properties
+The ***IScope*** interface defines a single property:
+
+#### *Guid* Property
+The ***Guid*** property returns a ***System.Guid*** value that uniquely identifies the dependency scope. The Guid value is generated automatically
+every time the ***CreateScope()*** method is called to create a new ***IScope*** instance.
+
+```csharp
+Guid Guid { get; }
+```
+
+### *IScope* Methods
+The ***IScope*** interface defines the following methods:
+
+#### *Dispose()* Method
+The ***Dispose()*** method is an implementation of the ***IDisposable*** interface that the ***IScope*** interface inherits from.
+
+```csharp
+void Dispose();
+```
+
+#### *Resolve\<T>()* Method
+The ***Resolve\<T>()*** method is used to resolve scoped dependencies. The type parameter ***T*** is the dependency type being resolved. The
+method returns an instance of the resolving type cast as the dependency type.
+
+```csharp
+T Resolve<T>() where T : class;
+```
+
+</br>
+
+> [!Note]
+> *The **Resolve\<T>()** method of the **IScope** interface can also be used to resolve singleton and transient dependencies the same as the
+> **Resolve\<T>()** method of the **IContainer** interface.*
+
+## The *IContainer* Interface
+The ***IContainer*** interface provides access to the dependency injection container. This is the primary component of the ***BasicDI*** class
+library. This component is responsible for:
+
+- Creating new ***Dependency\<T>*** objects and adding them to the dependency injection container
+- Creating new ***Scope*** objects and adding them to the dependency injection container
+- Resolving dependencies
+
+### *IContainer* Methods
+The ***IContainer*** interface defines the following methods:
+
+#### *Bind\<T>()* Method
+The ***Bind\<T>()*** method is used to create a new ***Dependency\<T>*** object. The type parameter ***T*** specifies the dependency type.
+This method is part of the fluent API. It is the first method that must be called when you are binding a given dependency type to a specific
+resolving type. The method returns the ***Dependency\<T>*** object cast as an ***ICanBindTo\<T>*** interface object.
+
+```csharp
+ICanBindTo<T> Bind<T>() where T : class;
+```
+
+</br>
+
+> [!Note]
+> *The type parameter **T** specified on the **Bind\<T>()** method must be an interface type or a concrete class type. Abstract class types
+> are not allowed.*
+
+#### *CreateScope()* Method
+The ***CreateScope()*** method creates a new ***Scope*** object representing a specific dependency scope. The ***Scope*** object is cast as
+an ***IScope*** interface object and returned to the caller.
+
+```csharp
+IScope CreateScope();
+```
+
+#### *GetDependency\<T>()* Method
+The ***GetDependency\<T>()*** method is used to retrieve an instance of the ***IDependency\<T>*** object from the dependency injection
+container. The type parameter ***T*** is the type of dependency to look for. The ***IDependency\<T>*** object will be returned to the
+caller if the dependency type has previously been added to the dependency injection container. Otherwise, *null* will be returned.
+
+```csharp
+IDependency<T>? GetDependency<T>() where T : class;
+```
+
+#### *Register\<T>()* Method
+The ***Register\<T>()*** method is used to create a new ***Dependency\<T>*** object when we wish to register a concrete class type with
+the dependency injection container. The type parameter ***T*** specifies the concrete class type to be registered. This method is part of
+the fluent API. It must be the first method called when registering a concrete class type. The method returns the new ***Dependency\<T>***
+object cast as an ***ICanSpecifyLifetime*** interface object.
+
+The ***Register\<T>()*** method allows you to specify an optional parameter. If specified, this parameter must be a factory method that
+returns the concrete class type ***T*** or a concrete class type that derives from that class type.
+
+```csharp
+ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
+```
+
+</br>
+
+> [!Note]
+> *The type parameter **T** specified on the **Bind\<T>()** method must be a concrete class type if the optional factory parameter isn't
+> specified. It must not be an abstract class type. It may be an interface type if the optional factory parameter is supplied.*
+
+#### *Resolve\<T>()* Method
+The ***Resolve\<T>()*** method is used to retrieve the resolving instance for the given dependency type. The type parameter ***T***
+specifies the dependency type to be resolved. The resolving instance is cast as the dependency type and returned to the caller.

@@ -10,7 +10,7 @@
 /// A reference to the dependency injection container.
 /// </param>
 /// <remarks>
-/// Creates a new instance of the <see cref="Dependency{T}" /> class.
+/// Class makes use of a primary constructor for creating new instances.
 /// </remarks>
 internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T>, ICanSpecifyLifetime where T : class
 {
@@ -41,14 +41,15 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     public DependencyLifetime Lifetime
     {
         get;
-        private set;
+        internal set;
     } = DependencyLifetime.Undefined;
 
     /// <summary>
     /// Gets an instance of the resolving object for this dependency.
     /// </summary>
     /// <remarks>
-    /// Will return <see langword="null" /> if this dependency isn't a singleton.
+    /// Will return <see langword="null" /> if this dependency isn't a singleton or if the
+    /// dependency hasn't been resolved yet.
     /// </remarks>
     public T? ResolvingObject
     {
@@ -116,7 +117,8 @@ internal class Dependency<T>(Container container) : IDependency<T>, ICanBindTo<T
     /// <returns>
     /// This updated <see cref="Dependency{T}" /> instance.
     /// </returns>
-    /// <exception cref="DependencyInjectionException" />"
+    /// <exception cref="DependencyInjectionException" />
+    /// "
     public ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class
     {
         ResolvingType = typeof(TResolving);

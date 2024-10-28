@@ -50,7 +50,7 @@ public class BasicDIUnitTests
     }
 
     [Fact]
-    public void BindDependencyType_ShouldCreateNewDependencyObject()
+    public void BindDependencyTypeThatIsAnInterface_ShouldCreateNewDependencyObject()
     {
         // Arrange
         Container container = Container.TestInstance;
@@ -65,6 +65,39 @@ public class BasicDIUnitTests
         dependency.Type
             .Should()
             .Be(typeof(ISimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(object));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindDependencyTypeThatIsConcreteClass_ShouldCreateNewDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<SimpleObject> dependency = (Dependency<SimpleObject>)container.Bind<SimpleObject>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(SimpleObject));
         dependency.Factory
             .Should()
             .BeNull();
@@ -125,6 +158,39 @@ public class BasicDIUnitTests
         dependency.ResolvingType
             .Should()
             .Be(typeof(SimpleObject));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
+    }
+
+    [Fact]
+    public void BindDependencyTypeToDerivedClass_ShouldUpdateDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        // Act
+        Dependency<SimpleObject> dependency = (Dependency<SimpleObject>)container.Bind<SimpleObject>().To<DerivedObject>();
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(SimpleObject));
+        dependency.Factory
+            .Should()
+            .BeNull();
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(DerivedObject));
         dependency._container
             .Should()
             .BeSameAs(container);
@@ -243,7 +309,7 @@ public class BasicDIUnitTests
     }
 
     [Fact]
-    public void RegisterDependencyTypeWithoutFactory_ShouldCreateNewDependencyObject()
+    public void RegisterConcreteDependencyTypeWithoutFactory_ShouldCreateNewDependencyObject()
     {
         // Arrange
         Container container = Container.TestInstance;
@@ -276,7 +342,7 @@ public class BasicDIUnitTests
     }
 
     [Fact]
-    public void RegisterDependencyTypeWithFactory_ShouldCreateNewDependencyObject()
+    public void RegisterConcreteDependencyTypeWithFactory_ShouldCreateNewDependencyObject()
     {
         // Arrange
         Container container = Container.TestInstance;
@@ -310,7 +376,7 @@ public class BasicDIUnitTests
     }
 
     [Fact]
-    public void RegisterDependencyThatIsNotAClassType_ShouldThrowException()
+    public void RegisterDependencyThatIsAnInterfaceWithoutFactory_ShouldThrowException()
     {
         // Arrange
         Container container = Container.TestInstance;
@@ -322,6 +388,40 @@ public class BasicDIUnitTests
             .Should()
             .ThrowExactly<DependencyInjectionException>()
             .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void RegisterDependencyThatIsAnInterfaceWithFactory_ShouldCreateNewDependencyObject()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        static ISimpleObject factory() => new SimpleObject();
+
+        // Act
+        Dependency<ISimpleObject> dependency = (Dependency<ISimpleObject>)container.Register(factory);
+
+        // Assert
+        dependency
+            .Should()
+            .NotBeNull();
+        dependency.Type
+            .Should()
+            .Be(typeof(ISimpleObject));
+        dependency.Factory
+            .Should()
+            .BeSameAs(factory);
+        dependency.Lifetime
+            .Should()
+            .Be(DependencyLifetime.Undefined);
+        dependency.ResolvingObject
+            .Should()
+            .BeNull();
+        dependency.ResolvingType
+            .Should()
+            .Be(typeof(ISimpleObject));
+        dependency._container
+            .Should()
+            .BeSameAs(container);
     }
 
     [Fact]
@@ -696,12 +796,63 @@ public class BasicDIUnitTests
     }
 
     [Fact]
+    public void ResolveDependencyWithoutDefinedLifetime_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<SimpleObject>().AsTransient();
+        ((Dependency<ISimpleObject>)container._dependencies[typeof(ISimpleObject)]).Lifetime = DependencyLifetime.Undefined;
+        Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
+        string expectedMessage = Messages.InvalidLifetime;
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<DependencyInjectionException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
     public void ResolveUnknownDependency_ShouldThrowException()
     {
         // Arrange
         Container container = Container.TestInstance;
         Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
         string expectedMessage = string.Format(Messages.UnableToResolveUnknownDependency, typeof(ISimpleObject).FullName);
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<DependencyInjectionException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void NoConstructorsFoundWhenResolvingDependency_ShouldThrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Register<SimpleObject>().AsSingleton();
+        ((Dependency<SimpleObject>)container._dependencies[typeof(SimpleObject)]).ResolvingType = typeof(StaticClass);
+        Func<SimpleObject> func = container.Resolve<SimpleObject>;
+        string expectedMessage = string.Format(Messages.NoConstructorsFound, typeof(StaticClass));
+
+        // Act/Assert
+        func
+            .Should()
+            .ThrowExactly<DependencyInjectionException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void ExceptionThrownDuringDependencyConstruction_ShouldRethrowException()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+        container.Bind<ISimpleObject>().To<ConstructorException>().AsTransient();
+        Func<ISimpleObject> func = container.Resolve<ISimpleObject>;
+        string innerMessage = "Exception has been thrown by the target of an invocation.";
+        string expectedMessage = string.Format(Messages.FailedToConstructResolvingObject, typeof(ISimpleObject).FullName, innerMessage);
 
         // Act/Assert
         func
@@ -937,6 +1088,28 @@ public class BasicDIUnitTests
         container._scopes
             .Should()
             .BeEmpty();
+    }
+
+    [Fact]
+    public void ManuallyDisposeScope_ShouldDiscardScope()
+    {
+        // Arrange
+        Container container = Container.TestInstance;
+
+        using (IScope scope = container.CreateScope())
+        {
+            container._scopes
+                .Should()
+                .NotBeEmpty();
+
+            // Act
+            scope.Dispose();
+
+            // Assert
+            container._scopes
+                .Should()
+                .BeEmpty();
+        }
     }
 
     [Fact]

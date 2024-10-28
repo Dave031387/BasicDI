@@ -3,12 +3,18 @@
 /// <summary>
 /// The <see cref="Scope" /> class is used manage the creation and lifetime of scoped dependencies.
 /// </summary>
-internal class Scope : IScope, IDisposable
+/// <param name="container">
+/// A reference to the dependency injection container.
+/// </param>
+/// <remarks>
+/// Class makes use of a primary constructor for creating new instances.
+/// </remarks>
+internal class Scope(Container container) : IScope
 {
     /// <summary>
     /// Hold a reference to the dependency injection container.
     /// </summary>
-    internal readonly Container _container;
+    internal readonly Container _container = container;
 
     /// <summary>
     /// A dictionary of resolved dependency types within the current scope.
@@ -26,21 +32,12 @@ internal class Scope : IScope, IDisposable
     private bool _isDisposed;
 
     /// <summary>
-    /// Create a new instance of the <see cref="Scope" /> class.
-    /// </summary>
-    internal Scope(Container container)
-    {
-        _container = container;
-        Guid = Guid.NewGuid();
-    }
-
-    /// <summary>
     /// Gets the <see cref="System.Guid" /> value that uniquely identifies this scope.
     /// </summary>
     public Guid Guid
     {
         get;
-    }
+    } = Guid.NewGuid();
 
     /// <summary>
     /// Dispose of the managed resources that are owned by this scope.
@@ -134,7 +131,6 @@ internal class Scope : IScope, IDisposable
     {
         if (_isDisposed)
         {
-            // TODO: This path has not been unit tested.
             return;
         }
 
