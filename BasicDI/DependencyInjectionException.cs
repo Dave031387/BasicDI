@@ -12,7 +12,7 @@ public class DependencyInjectionException : Exception
     /// <param name="message">
     /// The exception message that is to be displayed.
     /// </param>
-    public DependencyInjectionException(string message) : base(message)
+    internal DependencyInjectionException(string message) : base(message)
     {
     }
 
@@ -26,7 +26,7 @@ public class DependencyInjectionException : Exception
     /// <param name="inner">
     /// The inner exception.
     /// </param>
-    public DependencyInjectionException(string message, Exception inner) : base(message, inner)
+    internal DependencyInjectionException(string message, Exception inner) : base(message, inner)
     {
     }
 

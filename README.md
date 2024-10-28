@@ -154,6 +154,11 @@ next section in this document regarding resolving dependencies.
 > set to appropriate values by the factory method. If the factory method hadn't been used, the ***Employee*** object would have been returned
 > with the ***ID*** and ***CreatedOn*** properties set to default values.*
 
+> [!Important]
+> *If a factory method is used and the constructor for the resolving class type contains any dependencies it is the responsibility of the factory
+> method to resolve those dependencies, either by directly calling the **Resolve\<T>()** method of the dependency injection container, or through
+> some other means.*
+
 ## Resolving Dependencies
 After all dependencies have been registered with the dependency injection container, you can begin to ask for dependency objects from the container.
 The ***Resolve\<T>()*** method is used to request the resolving object corresponding to a given dependency type. The type parameter ***T*** specifies
@@ -388,7 +393,8 @@ ICanBindTo<T> Bind<T>() where T : class;
 
 #### *CreateScope()* Method
 The ***CreateScope()*** method creates a new ***Scope*** object representing a specific dependency scope. The ***Scope*** object is cast as
-an ***IScope*** interface object and returned to the caller.
+an ***IScope*** interface object and returned to the caller. A reference to the ***Scope*** object is also saved in the dependency injection
+container.
 
 ```csharp
 IScope CreateScope();
@@ -405,12 +411,15 @@ IDependency<T>? GetDependency<T>() where T : class;
 
 #### *Register\<T>()* Method
 The ***Register\<T>()*** method is used to create a new ***Dependency\<T>*** object when we wish to register a concrete class type with
-the dependency injection container. The type parameter ***T*** specifies the concrete class type to be registered. This method is part of
-the fluent API. It must be the first method called when registering a concrete class type. The method returns the new ***Dependency\<T>***
-object cast as an ***ICanSpecifyLifetime*** interface object.
+the dependency injection container without mapping it to a different resolving type. The type parameter ***T*** specifies the concrete class
+type to be registered. This method is part of the fluent API. It must be the first method called when registering a concrete class type. The
+method returns the new ***Dependency\<T>*** object cast as an ***ICanSpecifyLifetime*** interface object.
 
 The ***Register\<T>()*** method allows you to specify an optional parameter. If specified, this parameter must be a factory method that
 returns the concrete class type ***T*** or a concrete class type that derives from that class type.
+
+Prior to returning the new ***Dependency\<T>*** object to the caller, the ***Register\<T>()*** method first sets the ***ResolvingType*** property
+to the dependency type. Also, if a factory method was supplied to the method, then the ***Factory*** property is set to that factory method.
 
 ```csharp
 ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
@@ -425,3 +434,102 @@ ICanSpecifyLifetime Register<T>(Func<T>? factory = null) where T : class;
 #### *Resolve\<T>()* Method
 The ***Resolve\<T>()*** method is used to retrieve the resolving instance for the given dependency type. The type parameter ***T***
 specifies the dependency type to be resolved. The resolving instance is cast as the dependency type and returned to the caller.
+
+If a factory method was supplied for the given dependency type then the factory will be used to create the instance of the resolving object.
+Otherwise, the dependency injection container will attempt to resolve all dependencies found on the constructor of the resolving class type
+and then will construct a new instance of the resolving type using those resolved dependencies.
+
+```csharp
+T Resolve<T>() where T : class;
+```
+
+## The *ICanBindTo\<T>* Interface
+The ***ICanBindTo\<T>*** interface is part of the fluent API. Once a new ***Dependency\<T>*** object has been created by calling the
+***Bind\<T>()*** method, the ***ICanBindTo\<T>*** interface defines what actions can be performed next on that object. The type
+parameter ***T*** specifies the dependency type that is being bound to the resolving type.
+
+### *ICanBindTo\<T>* Methods
+There is only one method defined by the ***ICanBindTo\<T>*** interface.
+
+#### *To\<TResolving>()* Method
+The ***To\<TResolving>()*** method is used to specify the concrete class type that should be used when resolving the dependency type.
+It is the next method that must be called after calling the ***Bind\<T>()*** method of the ***IContainer*** object.
+
+If the dependency type that was specified on the ***Bind\<T>()*** method was an interface type, then the type parameter ***TResolving***
+must be a concrete class type that implements the interface type. If the dependency type was a class type, then ***TResolving*** must
+specify a concrete class type that derives from the dependency class type.
+
+> [!Note]
+> *If the dependency type is a concrete class type, it is permissible for the resolving class type to be the same type as the dependency
+> class type. However, for this special case, it makes more sense to use the **Register\<T>()** method for registering the dependency type
+> with the dependency injection container, thus avoiding one method call and the redundant use of a single type specification.*
+
+The ***To\<TResolving>()*** method allows you to specify an optional parameter. If specified, this parameter must be a factory method that
+returns the dependency type ***T*** or any type that is assignable to that type.
+
+The ***To\<TResolving>()*** method sets the ***ResolvingType*** property to the ***TResolving*** type. If a factory method was specified,
+then the ***Factory*** property is set to that factory method. The updated ***Dependency\<T>*** object is then cast as an ***ICanSpecifyLifetime***
+interface object and returned to the caller.
+
+```csharp
+ICanSpecifyLifetime To<TResolving>(Func<T>? factory = null) where TResolving : class;
+```
+
+## The *ICanSpecifyLifetime* Interface
+The ***ICanSpecifyLifetime*** interface is part of the fluent API. This interface defines the actions that are available once a dependency
+type has been registered or has been bound to a resolving type. This is the last step in setting up the ***Dependency\<T>*** object that
+gets added to the dependency injection container.
+
+### *ICanSpecifyLifetime* Methods
+The ***ICanSpecifyLifetime*** interface defines the following methods.
+
+#### *AsScoped()* Method
+The ***AsScoped()*** method sets the ***Lifetime*** property of the ***Dependency\<T>*** object to ***DependencyLifetime.Scoped***. It then
+adds the ***Dependency\<T>*** object to the dependency injection container.
+
+```csharp
+void AsScoped();
+```
+
+#### *AsSingleton()* Method
+The ***AsSingleton()*** method sets the ***Lifetime*** property of the ***Dependency\<T>*** object to ***DependencyLifetime.Singleton***. It then
+adds the ***Dependency\<T>*** object to the dependency injection container.
+
+```csharp
+void AsSingleton();
+```
+
+#### *AsTransient()* Method
+The ***AsTransient()*** method sets the ***Lifetime*** property of the ***Dependency\<T>*** object to ***DependencyLifetime.Transient***. It then
+adds the ***Dependency\<T>*** object to the dependency injection container.
+
+```csharp
+void AsTransient();
+```
+
+## The *DependencyLifetime* Enumeration
+The ***Lifetime*** property of the ***IDependency\<T>*** interface object is of type ***DependencyLifetime***. This is an enumeration made
+up of the following enumeration values.
+
+- ***Undefined*** (0)
+- ***Singleton*** (1)
+- ***Scoped*** (2)
+- ***Transient*** (3)
+
+The number in parenthesis appearing after the enumeration value name is the equivalent integer value of that enumeration.
+
+## The *DependencyInjectionException* Class
+All exceptions thrown by the components of the ***BasicDI*** class library are of type ***DependencyInjectionException***. This exception
+class has three public properties.
+
+### *DependencyType* Property
+The ***DependencyType*** property will be set to the dependency type that was involved in the exception. The property will be set to *null*
+if the dependency type can't be determined.
+
+### *Lifetime* Property
+The ***Lifetime*** property will be set to the lifetime of the dependency that was involved in the exception. The property will be set to
+***DependencyLifetime.Undefined*** if the lifetime is unknown.
+
+### *ResolvingType* Property
+The ***ResolvingType*** property will be set to the resolving type that was involved in the exception. The property will be set to *null*
+if the resolving type is unknown or hasn't yet been assigned.
