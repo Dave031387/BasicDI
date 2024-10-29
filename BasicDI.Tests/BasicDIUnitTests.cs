@@ -33,9 +33,9 @@ public class BasicDIUnitTests
     public void GetContainerMoreThanOnce_ShouldReturnSameInstanceEachTime()
     {
         // Arrange/Act
-        Container container1 = Container.Current;
-        Container container2 = Container.Current;
-        Container container3 = Container.Current;
+        IContainer container1 = Container.Current;
+        IContainer container2 = Container.Current;
+        IContainer container3 = Container.Current;
 
         // Assert
         container1
@@ -845,7 +845,7 @@ public class BasicDIUnitTests
     }
 
     [Fact]
-    public void ExceptionThrownDuringDependencyConstruction_ShouldRethrowException()
+    public void ExceptionThrownDuringDependencyConstruction_ShouldReThrowException()
     {
         // Arrange
         Container container = Container.TestInstance;

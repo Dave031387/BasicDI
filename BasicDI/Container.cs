@@ -8,7 +8,7 @@ namespace BasicDI;
 /// <summary>
 /// A simple dependency injection container.
 /// </summary>
-internal class Container : IContainer
+public class Container : IContainer
 {
     /// <summary>
     /// The dependency mapping container.
@@ -24,7 +24,7 @@ internal class Container : IContainer
     /// <summary>
     /// A lazy initializer for the dependency injection container.
     /// </summary>
-    private static readonly Lazy<Container> _lazy = new(static () => new Container());
+    private static readonly Lazy<IContainer> _lazy = new(() => new Container());
 
     /// <summary>
     /// A lock object used to facilitate thread safety on operations against the dependency
@@ -59,7 +59,7 @@ internal class Container : IContainer
     /// <remarks>
     /// This returns a thread safe singleton instance of the container.
     /// </remarks>
-    public static Container Current => _lazy.Value;
+    public static IContainer Current => _lazy.Value;
 
     /// <summary>
     /// Get a test instance of the dependency injection container for use in unit tests.
