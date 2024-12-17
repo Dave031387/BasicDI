@@ -21,7 +21,7 @@
     <RepositoryUrl>https://github.com/Dave031387/BasicDI</RepositoryUrl>
     <Copyright>2004 David R Slocum</Copyright>
     <PackageOutputPath>C:\Users\dave0\Packages</PackageOutputPath>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
